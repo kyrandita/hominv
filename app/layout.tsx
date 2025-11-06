@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
+import { ProviderComponent } from "@/Contexts/UserContext";
+
+import UserStateNavElement from "@/Components/UserStateNavElement";
+import Dashboard from "./dashboard/page";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,11 +29,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <ProviderComponent>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <nav style={{display:"flex", justifyContent: "space-evenly"}}>
+            <Link href="/">Hominv</Link>
+            {/* normally user page links would be hidden if not logged in, but I'm leaving dashboard exposed for now for testing purposes */}
+            <Link href={"/dashboard"}>Dashboard</Link>
+            <Link href={'/inventory'}>Inventory</Link>
+            <div>
+              <UserStateNavElement></UserStateNavElement>
+            </div>
+          </nav>
+          {children}
+        </body>
+      </ProviderComponent>
     </html>
   );
 }
