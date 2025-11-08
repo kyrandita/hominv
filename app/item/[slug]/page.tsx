@@ -1,14 +1,25 @@
 'use client'
 
+import { useFetch } from "@/Utils/useFetch"
 import Image from "next/image"
+import { useEffect, useState } from "react"
 
-export default function ItemPage() {
+export default function ItemPage({ params }: { params: Promise<{ itemId: number}>}) {
+    const [itemId, setItemId] = useState<number>()
+    const itemData = useFetch(`/api/inventory/${itemId}`)
+    useEffect(() => {
+        (async () => {
+            const { slug } = await params;
+            setItemId(slug)
+        })()
+    }, [ params ])
     return <div style={{display: "flex", flexDirection: "column", }}>
-        <Image src="http://placebeard.it/200/300" width={300} height={200} />
+        <Image src="http://placebeard.it/200/300" width={300} height={200} alt="Primary image of current item" />
         <label>
             Short Desc:
             <output>Fony Bravii Smart TV</output>
         </label>
+        <p>{JSON.stringify(itemData)}</p>
         <label>
             Quantity:
             <output>1</output>

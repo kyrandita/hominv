@@ -2,26 +2,26 @@
 import { useFetch } from "@/Utils/useFetch"
 import Link from "next/link"
 
-export default function Inventory() {
+export default function Locations() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
-    const user_inventory = useFetch('/api/inventory')
+    const user_inventory = useFetch('/api/location/list')
     return <div>
         <p>Users home inventory, paginated likely when I get far enough to do that</p>
         <table>
             <thead>
                 <tr>
-                    <th>Item Name</th>
+                    <th>Location Name</th>
                     <th>Quantity</th>
                     <th>Location</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-            {user_inventory?.record?.map(({id, name, qty, location}) => 
-                <tr key={name}>
-                    <td><Link href={`/item/${id}`}>{name}</Link></td>
-                    <td>{qty}</td>
-                    <td><Link href={`/location/${name}`}>{location}</Link></td>
+            {user_inventory?.record?.map(({loc, quad, rgb}) => 
+                <tr key={loc}>
+                    <td><Link href={`/location/${loc}`}>{loc}</Link></td>
+                    <td>{JSON.stringify(quad)}</td>
+                    <td>{rgb.toString(16).toUpperCase().padStart(6, "0")}</td>
                     <td><button onClick={() => alert('remove/sell/move item sub menu')}>action menu</button></td>
                 </tr>
             )}

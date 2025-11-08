@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ProviderComponent } from "@/Contexts/UserContext";
 
 import UserStateNavElement from "@/Components/UserStateNavElement";
-import Dashboard from "./dashboard/page";
+import Image from "next/image";
+import ApplicationLinks from "@/Components/ApplicationLinks";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,12 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <ProviderComponent>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <nav style={{display:"flex", justifyContent: "space-evenly"}}>
-            <Link href="/">Hominv</Link>
-            {/* normally user page links would be hidden if not logged in, but I'm leaving dashboard exposed for now for testing purposes */}
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased  min-h-screen`}>
+          <nav style={{display:"flex", justifyContent: "space-evenly", alignItems: "center", background: "#333"}}>
+            <Link href="/"><Image src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
+            {/* TODO normally user page links would be hidden if not logged in, but I'm leaving dashboard exposed for now for testing purposes */}
             <Link href={"/dashboard"}>Dashboard</Link>
-            <Link href={'/inventory'}>Inventory</Link>
+            <ApplicationLinks></ApplicationLinks>
             <div>
               <UserStateNavElement></UserStateNavElement>
             </div>
