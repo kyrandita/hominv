@@ -4,7 +4,7 @@ import { useFetch } from "@/Utils/useFetch"
 import Image from "next/image"
 import { useEffect, useState } from "react"
 
-export default function ItemPage({ params }: { params: Promise<{ itemId: number}>}) {
+export default function ItemPage({ params }: { params: Promise<{ slug: number}>}) {
     const [itemId, setItemId] = useState<number>()
     const itemData = useFetch(`/api/inventory/${itemId}`)
     useEffect(() => {

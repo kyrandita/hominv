@@ -45,3 +45,26 @@ export const inventory: {[key: number]: Item} = {
     0xFEDCBA: {id: 0xFEDCBA, name: 'Bandsaw', qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
     0x1: {id: 0x1, name: 'Playstation 5', serial: "qwertyuiop", qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
 }
+
+const apiMap = new Map<RegExp, (groups?: {[key: string]: string}) => {status: number, record: object | any[]}>()
+apiMap.set(/\/api\/inventory$/, () => ({ // records contain only minimal information about stored inventory
+    status: 200,
+    record: Object.values(inventory),
+}))
+
+apiMap.set(/^\/api\/inventory\/(?<itemId>\d*)$/, ({itemId}) => ({
+    status: 200,
+    record: inventory[Number(itemId)] ?? {},
+}))
+apiMap.set(/\/api\/location\/list/, () => ({
+    status: 200,
+    record: Object.entries(locations).map(([locind, loc]) => {
+        return {loc: locind, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}
+    }),
+}))
+apiMap.set(/^\/api\/location\/(?<slug>.*)$/, ({slug}) => ({
+    status: 200,
+    record: Object.entries(locations).find(([locind, loc]) => locind === decodeURI(slug))?.[1] ?? {},
+}))
+
+export { apiMap }

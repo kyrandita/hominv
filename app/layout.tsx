@@ -35,7 +35,6 @@ export default function RootLayout({
           <nav style={{display:"flex", justifyContent: "space-evenly", alignItems: "center", background: "#333"}}>
             <Link href="/"><Image src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
             {/* TODO normally user page links would be hidden if not logged in, but I'm leaving dashboard exposed for now for testing purposes */}
-            <Link href={"/dashboard"}>Dashboard</Link>
             <ApplicationLinks></ApplicationLinks>
             <div>
               <UserStateNavElement></UserStateNavElement>

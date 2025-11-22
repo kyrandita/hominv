@@ -1,26 +1,6 @@
 'use client'
 import { useEffect, useState } from "react";
-import { inventory, locations } from "./fakeData";
-
-const apiMap = new Map<RegExp, (groups?: {[key: string]: string}) => {status: number, record: any}>()
-apiMap.set(/\/api\/inventory$/, () => ({ // records contain only minimal information about stored inventory
-    status: 200,
-    record: Object.values(inventory),
-}))
-apiMap.set(/^\/api\/inventory\/(?<itemId>\d*)$/, ({itemId}) => ({
-    status: 200,
-    record: inventory[Number(itemId)] ?? {},
-}))
-apiMap.set(/\/api\/location\/list/, () => ({
-    status: 200,
-    record: Object.entries(locations).map(([locind, loc]) => {
-        return {loc: locind, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}
-    }),
-}))
-apiMap.set(/^\/api\/location\/(?<slug>.*)$/, ({slug}) => ({
-    status: 200,
-    record: Object.entries(locations).find(([locind, loc]) => locind === decodeURI(slug))?.[1] ?? {},
-}))
+import { apiMap } from "./fakeData";
 
 export const useFetch = (url: string): { status: number, record?: object | Array<object> } => {
     const [data, setData] = useState<{ status: number, record?: object | Array<object> }>({status: 404})
@@ -31,6 +11,7 @@ export const useFetch = (url: string): { status: number, record?: object | Array
     useEffect(() => {
         const doTheThing = async () => {
             setData(() => {
+                // everything is GET right now, but the keys will have to become objects instead of just REGEX so I can define method as well
                 const found = apiMap.entries().find(([regex, ]) => regex.test(url))
                 console.log(url, found)
                 if (!found) return { status: 404 }

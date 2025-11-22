@@ -19,6 +19,12 @@
   }
 }
 
+@layer base {
+  *, ::backdrop {
+    margin: revert;
+  }
+}
+
 body {
   display: flex;
   flex-direction: column;

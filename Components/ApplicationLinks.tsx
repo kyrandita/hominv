@@ -1,6 +1,6 @@
 'use client'
 
-import UserContext, { DispatchContext } from "@/Contexts/UserContext"
+import UserContext from "@/Contexts/UserContext"
 import Link from "next/link"
 import { useContext } from "react"
 

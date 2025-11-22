@@ -1,5 +1,5 @@
 'use client'
-import React, { PropsWithChildren, useReducer } from "react";
+import React, { PropsWithChildren, useEffect, useReducer } from "react";
 
 class UserState {
     public username: string;
@@ -29,6 +29,7 @@ const DispatchContext = React.createContext<React.ActionDispatch<[action: UserCo
 
 interface LoginAction {
     type: 'login',
+    token?: string,
 }
 
 interface LogoutAction {
@@ -43,15 +44,27 @@ function ProviderComponent ({ children }: PropsWithChildren) {
         console.log({prevState, action});
         switch (action.type) {
             case 'login':
-                // we could double check if user is changing here, but for this demo we don't care
+                // if token is defined, would check with server if token is valid and retrieve actual user data and such... maybe not right here... not sure yet
+                window.sessionStorage.setItem('loginToken', 'ABCD')
                 return new UserState({username:'HLuker'});
             case 'logout':
+                // it may be prudent to `.clear()` instead, but for my purposes right now this is enough
+                window.sessionStorage.removeItem('loginToken')
                 return new UserState()
             default:
                 return prevState;
         }
     };
     const [state, dispatch] = useReducer<UserState, [action: UserContextActions]>(reducerFunction, new UserState());
+
+    useEffect(() => {
+        const tok = window.sessionStorage.getItem('loginToken')
+        if (tok) {
+            // this should at least persist login longer for now
+            // need to consider keepalive and timeout behavior when setting up actual security process
+            dispatch({type:'login', token: tok})
+        }
+    }, [])
 
     return (
         <UserContext.Provider value={state}>
