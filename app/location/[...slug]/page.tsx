@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 export default function LocationPage({params} : {params: Promise<{ slug: string }>}) {
     const [slug, setSlug] = useState<string>()
-    const locationData = useFetch(`/api/location/${slug}`)
+    const {data:locationData} = useFetch(`/api/location/${slug}`)
     useEffect(() => {
         (async () => {
             const { slug } = await params;

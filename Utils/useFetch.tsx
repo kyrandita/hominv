@@ -1,26 +1,33 @@
 'use client'
-import { useEffect, useState } from "react";
-import { apiMap } from "./fakeData";
+import { useCallback, useEffect, useState } from "react";
+import fetch from "./fakeFetch";
 
-export const useFetch = (url: string): { status: number, record?: object | Array<object> } => {
-    const [data, setData] = useState<{ status: number, record?: object | Array<object> }>({status: 404})
+export const useFetch = <T,>(url: string): { data?: T, loading: boolean, error: Error|null, refresh: (silent:boolean) => void } => {
+    const [data, setData] = useState<T | undefined>()
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
 
     // because I have no actual backend yet, I'm faking the data return of useFetch(),
     // when the API exists this should be a straight up drop in replacement
     // though that should be done sooner rather than later if the data lifecycle is to be tested correctly
-    useEffect(() => {
-        const doTheThing = async () => {
-            setData(() => {
-                // everything is GET right now, but the keys will have to become objects instead of just REGEX so I can define method as well
-                const found = apiMap.entries().find(([regex, ]) => regex.test(url))
-                console.log(url, found)
-                if (!found) return { status: 404 }
-                const result = url.match(found[0])
-                return found[1](result?.groups)
-            })
+    const refresh = useCallback(async (silent:boolean = false) => {
+        setLoading(!silent)
+        try {
+            const response = await fetch(url, {method: 'GET'})
+            if (!response.ok) {
+                throw new Error('Request Error: ' + response.statusText)
+            }
+            setData((await response.json()).data)
+        } catch (e) {
+            setError(e)
+        } finally {
+            setLoading(false)
         }
-        doTheThing()
     }, [url])
 
-    return data
+    useEffect(() => {
+        refresh()
+    }, [url, refresh])
+
+    return { data, loading, error, refresh }
 };

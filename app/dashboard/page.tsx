@@ -14,10 +14,10 @@ export default function Dashboard() {
     </p>
     <div>
         <p>
-            notifications of any inventory stored in "/" (the nowhere location... or maybe <code>null</code>) remindin the user to move them to the correct locations
+            notifications of any inventory stored in &quot;/&quot; (the nowhere location... or maybe <code>null</code>) remindin the user to move them to the correct locations
         </p>
         <p>
-            depending on configuration, reminders to audit inventory that hasn't been confirmed in X timespan to verify it's continued ownership and location, just a soft reminder to keep up the inventory mostly
+            depending on configuration, reminders to audit inventory that hasn&apos;t been confirmed in X timespan to verify it&apos;s continued ownership and location, just a soft reminder to keep up the inventory mostly
         </p>
         <p>
             a section for plugin notifications maybe? if they want to include reminders for maintenance and repair scheduling or whatever plugins add, not really thinking about a plugin API yet...

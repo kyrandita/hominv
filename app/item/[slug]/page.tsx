@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 
 export default function ItemPage({ params }: { params: Promise<{ slug: number}>}) {
     const [itemId, setItemId] = useState<number>()
-    const itemData = useFetch(`/api/inventory/${itemId}`)
+    const {data:itemData, loading, error} = useFetch(`/api/inventory/${itemId}`)
     useEffect(() => {
         (async () => {
             const { slug } = await params;

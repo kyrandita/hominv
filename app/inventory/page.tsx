@@ -1,27 +1,31 @@
 'use client'
 import AddInventoryForm from "@/Components/AddInventoryForm"
 import { useFetch } from "@/Utils/useFetch"
+import fetch from "@/Utils/fakeFetch"
 import { Dialog } from "@mui/material"
 import Link from "next/link"
 import { FormEvent, useState } from "react"
 
 export default function Inventory() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
-    const user_inventory = useFetch('/api/inventory')
+    const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch('/api/inventory')
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
 
-    function handleAddFormSubmit(fd:FormEvent) {
-        // not the React way of doing things I know, I should make the form use a bunch of states and collect the form data that way, using this callback at the end without using th enative FormEvent... I may go that direction eventually to be more React conformant, this was just what came to mind first right now
-
-        fd.preventDefault()
+    function handleAddFormSubmit(fd:FormData) {
         // possibly show loading indicator
-        console.log(fd.target)
-        const formData = new FormData(fd.target as HTMLFormElement)
         // send form data to API await response
-        // if success clear and close modal form
-        // else notify what went wrong
-        // remove loading indicator
-        console.log(fd, formData)
+        const fr = fetch('/api/inventory', { method: 'post', body: fd })
+        fr.then((res) => {
+            if (!res.ok) {
+                // tell user why it failed, right now this is always it doesn't work yet
+                alert(res.statusText)
+            } else {
+                // if success clear and close modal form
+                setAddInventoryOpen(false)
+                inventoryRefresh(false)
+                // remove loading indicator
+            }
+        })
     }
 
     return <div>
@@ -36,7 +40,7 @@ export default function Inventory() {
                 </tr>
             </thead>
             <tbody>
-            {Array.isArray(user_inventory?.record) && user_inventory?.record?.map(({id, name, qty, location}) => 
+            {Array.isArray(user_inventory) && user_inventory?.map(({id, name, qty, location}) => 
                 <tr key={name}>
                     <td><Link href={`/item/${id}`}>{name}</Link></td>
                     <td>{qty}</td>
@@ -51,13 +55,14 @@ export default function Inventory() {
                     <Dialog
                         open={addInventoryOpen}
                         onClose={() => setAddInventoryOpen(false)}>
-                            <AddInventoryForm OnSubmit={handleAddFormSubmit}></AddInventoryForm>
+                            {/* && here is correct because I know the left hand is a boolean, otherwise I'd need to !! or Boolean() cast it to avoid render condition leaking */}
+                            {addInventoryOpen && <AddInventoryForm OnSubmit={handleAddFormSubmit}></AddInventoryForm>}
                     </Dialog>
                 </td></tr>
             </tfoot>
         </table>
 
-            <p>possibly as another column/page but a way to manage locations, I want locations to be creatable when adding an item. No need to back out to create a new file box location if you can just imply it's existence by a new location path (according to the path adjacency model of heirarchy). The point is to get in your way as little as possible while keeping track of your stuff.</p>
+            <p>possibly as another column/page but a way to manage locations, I want locations to be creatable when adding an item. No need to back out to create a new file box location if you can just imply it&apos;s existence by a new location path (according to the path adjacency model of heirarchy). The point is to get in your way as little as possible while keeping track of your stuff.</p>
             <hr/>
 
         <footer>

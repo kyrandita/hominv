@@ -5,21 +5,17 @@ import { ComponentRef, createRef, useEffect, useRef, useState } from "react"
 
 export default function Locations() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
-    const user_inventory = useFetch('/api/location/list')
-    // stupid trick to force render once refs are created, look into a cleaner solution eventually...
-    //  yes I could just use state props for each modal but I wanted to see if this method would work cleanly... it may not
-    // the linter seems to not like it much even though it's perfectly valid react...
-    const [recordCount, setRecordCount] = useState(0)
+    const {data: user_inventory, loading, error} = useFetch('/api/location/list')
+    
     const dialogRefs = useRef<{current:HTMLDialogElement}[]>([]);
 
     useEffect(() => {
         console.log('effect called', user_inventory, dialogRefs.current)
-        if (user_inventory.record && Array.isArray(user_inventory?.record)) {
+        if (user_inventory && Array.isArray(user_inventory)) {
             // trim down the extra if we've removed some and set new refs if it's grown
-            dialogRefs.current = user_inventory?.record?.map((_, ind) => dialogRefs.current[ind] ?? createRef())
+            dialogRefs.current = user_inventory.map((_, ind) => dialogRefs.current[ind] ?? createRef())
             // the internet seems to suggest I need this line, I want to test that later...
             dialogRefs.current = dialogRefs.current.map(i => i || createRef())
-            setRecordCount(user_inventory.record.length)
         }
         console.log(dialogRefs.current)
     }, [user_inventory])
@@ -41,7 +37,7 @@ export default function Locations() {
                 </tr>
             </thead>
             <tbody>
-            {Array.isArray(user_inventory?.record) && user_inventory?.record?.map(({loc, quad, rgb}, ind) => 
+            {!loading && Array.isArray(user_inventory) && user_inventory?.map(({loc, quad, rgb}, ind) => 
                 <tr key={loc}>
                     <td><Link href={`/location/${loc}`}>{loc}</Link></td>
                     <td>{JSON.stringify(quad)}</td>
