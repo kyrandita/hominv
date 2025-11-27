@@ -17,6 +17,10 @@ export const useFetch = <T,>(url: string): { data?: T, loading: boolean, error: 
             if (!response.ok) {
                 throw new Error('Request Error: ' + response.statusText)
             }
+            // this strips the root object and all other meta keys from the object and only can be done here because
+            // this is my version of useFetch... I probably won't do this later in the project as the additional meta keys will become useful
+            // though I could provide a transform prop to format the specific instance into what the component needs...
+            // not sure yet how I want to handle that
             setData((await response.json()).data)
         } catch (e) {
             setError(e)

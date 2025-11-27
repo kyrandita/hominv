@@ -36,22 +36,24 @@ export default function Inventory() {
                     <th>Item Name</th>
                     <th>Quantity</th>
                     <th>Location</th>
+                    <th>Description</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-            {Array.isArray(user_inventory) && user_inventory?.map(({id, name, qty, location}) => 
+            {Array.isArray(user_inventory) && user_inventory?.map(({id, name, qty, description, location}) => 
                 <tr key={name}>
                     <td><Link href={`/item/${id}`}>{name}</Link></td>
                     <td>{qty}</td>
                     <td><Link href={`/location/${name}`}>{location}</Link></td>
+                    <td>{description}</td>
                     <td><button onClick={() => alert('remove/sell/move item sub menu')}>action menu</button></td>
                 </tr>
             )}
             </tbody>
             <tfoot>
-                <tr><td colSpan={4}>
-                    <button onClick={() => setAddInventoryOpen(true)}>Add Item</button>
+                <tr><td colSpan={5} style={{textAlign: 'center'}}>
+                    <button onClick={() => setAddInventoryOpen(true)}>+ Add Item</button>
                     <Dialog
                         open={addInventoryOpen}
                         onClose={() => setAddInventoryOpen(false)}>
