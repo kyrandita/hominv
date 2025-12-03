@@ -5,7 +5,7 @@ import fetch from "./fakeFetch";
 export const useFetch = <T,>(url: string): { data?: T, loading: boolean, error: Error|null, refresh: (silent:boolean) => void } => {
     const [data, setData] = useState<T | undefined>()
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
+    const [error, setError] = useState<Error|null>(null)
 
     // because I have no actual backend yet, I'm faking the data return of useFetch(),
     // when the API exists this should be a straight up drop in replacement

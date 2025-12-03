@@ -1,8 +1,11 @@
 export type Location = {
     name: string,
+    description?: string,
+    notes?: string,
     quad?: number[], // This is probably not what I need, the quad isn't on the location itself, but only on it's relation to it's parent, the location only needs a WxH, maybe a polygon
     rgb?: number,
     last_modified?: Date, // probably will be generated or gotten from the last-edited of the items within the location? not sure what makes sense yet
+    // sub locations are just other locations with this path as a prefix... so not stored here as data
 }
 
 export type Item = {
@@ -23,12 +26,25 @@ export const locations: {[key: string]: Location} = {
     },
     "Home(555 nowhere ave)/Kitchen": {
         name: 'Home(555 nowhere ave)/Kitchen',
-        quad: [0,0,200,100],
+        quad: [200,100, 500, 100, 500,300, 400,300, 400,250, 200,250],
+        rgb: 0xF000F1,
     },
     "Home(555 nowhere ave)/Kitchen/Pantry": {
         name: 'Home(555 nowhere ave)/Kitchen/Pantry',
         quad: [150,0,200,25],
         rgb: 0x00FF11
+    },
+    "Home(555 nowhere ave)/Garage": {
+        name: 'Home(555 nowhere ave)/Garage',
+        description: 'Storage Closet',
+        quad: [100,250, 400,250, 400,700, 100,700],
+        rgb: 0x00FF00,
+        notes: 'Closet A is primarily storage for old toys, not suitable for electronics, being in the garage it is not sealed to moisture and tech/electronic media will be damage over time if not properly insulated',
+    },
+    "Home(555 nowhere ave)/Garage/ClosetA": {
+        name: 'Home(555 nowhere ave)/Garage/ClosetA',
+        description: 'Storage Closet',
+        notes: 'Closet A is primarily storage for old toys, not suitable for electronics, being in the garage it is not sealed to moisture and tech/electronic media will be damage over time if not properly insulated',
     },
     "Storage Unit (123 college town dr)": {
         name: 'Storage Unit (123 college town dr)',
@@ -56,7 +72,7 @@ type MapKey = {
     methods: string[],
 }
 
-const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined) => { status: number, statusText?: string, data: object | Location[] | Location | Item[] | Item | void}>()
+const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined) => { status: number, statusText?: string, data: object | Location[] | Location | LocationReturn | Item[] | Item | void}>()
 apiMap.set(
     {regex:/\/api\/inventory$/, methods: ['GET']},
     () => ({ // records contain only minimal information about stored inventory
@@ -123,14 +139,30 @@ apiMap.set(
     })
 )
 
+export type LocationReturn = Location & {
+    sub: Location[]
+}
+
 apiMap.set(
     { regex:/^\/api\/location\/(?<slug>.*)$/, methods: ['GET'] },
-    ({slug}) => ({
-        status: 200,
-        data: Object.entries(locations).find(([locind, loc]) => locind === decodeURI(slug))?.[1] ?? {},
-    })
+    ({slug}) => {
+        const entry = Object.entries(locations).find(([locind, loc]) => locind === decodeURI(slug))
+        // then find all sub-locations to include minimal information about
+        const sublocations = entry ? Object.entries(locations).filter(([locind, loc]) => {
+            // console.log(entry, locind, locind.startsWith(`${entry[0]}/`), new RegExp(`${RegExp.escape(entry[0])}/[^\/]*`), (new RegExp(`${RegExp.escape(entry[0])}\/[^\/]*`)).test(locind))
+            return (new RegExp(`^${RegExp.escape(entry[0])}/[^\/]*$`)).test(locind)//locind.startsWith(`${entry[0]}/`)
+        }).map(e => ({name:e[1].name, quad: e[1].quad ?? [], ...(e[1].rgb ? {rgb: e[1].rgb} : {})})) : []
+        return {
+            status: entry ? 200 : 404,
+            data: {
+                ...entry?.[1],
+                sub: sublocations
+            }
+        }
+    }
 )
 
+// const date3monthsago = Temporal.Now.plainDateISO().subtract(Temporal.Duration.from('P3M')) // if the Temporal API gets approved before I replace these faker functions
 const date3monthsago = new Date()
 date3monthsago.setMonth(date3monthsago.getMonth() - 3) // this frequency should be configurable
 apiMap.set(
