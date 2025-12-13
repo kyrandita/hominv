@@ -4,11 +4,13 @@ import { useFetch } from "@/Utils/useFetch"
 import fetch from "@/Utils/fakeFetch"
 import { Dialog } from "@mui/material"
 import Link from "next/link"
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
+import { Item } from "@/Utils/fakeData"
 
 export default function Inventory() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
-    const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch('/api/inventory')
+    const [pageUrl, setPageUrl] = useState(new URL('/api/inventory', globalThis.location?.origin ?? 'http://localhost'))
+    const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch<{records:Item[], offset: number, pagesize: number, total: number}>(pageUrl)
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
 
     function handleAddFormSubmit(fd:FormData) {
@@ -28,6 +30,30 @@ export default function Inventory() {
         })
     }
 
+    const changePage = (pageChange: number): void => {
+        const nurl = new URL(pageUrl)
+        // maybe clear other params, but if working as designed no other params should exist
+        nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
+        nurl.searchParams.set('offset',String((user_inventory?.offset ?? 0) + ((user_inventory?.pagesize ?? 0) * pageChange)))
+        if (Number(nurl.searchParams.get('offset')) >= (user_inventory?.total) || Number(nurl.searchParams.get('offset')) < 0) return
+        setPageUrl(nurl)
+    }
+
+    const handleFirstPage = () => {
+        const nurl = new URL(pageUrl)
+        nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
+        nurl.searchParams.set('offset', String(0))
+        setPageUrl(nurl)
+    }
+    const handleNextPage = () => changePage(1)
+    const handlePrevPage = () => changePage(-1)
+    const handleLastPage = () => {
+        const nurl = new URL(pageUrl)
+        nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
+        nurl.searchParams.set('offset', String(Math.floor(user_inventory?.total/user_inventory?.pagesize)*user_inventory?.pagesize))
+        setPageUrl(nurl)
+    }
+
     return <div>
         <p>Users home inventory, paginated likely when I get far enough to do that</p>
         <table>
@@ -41,7 +67,7 @@ export default function Inventory() {
                 </tr>
             </thead>
             <tbody>
-            {Array.isArray(user_inventory) && user_inventory?.map(({id, name, qty, description, location}) => 
+            {user_inventory && Array.isArray(user_inventory.records) && user_inventory.records.map(({id, name, qty, description, location}) => 
                 <tr key={name}>
                     <td><Link href={`/item/${id}`}>{name}</Link></td>
                     <td>{qty}</td>
@@ -52,6 +78,15 @@ export default function Inventory() {
             )}
             </tbody>
             <tfoot>
+                {user_inventory && <tr>
+                    <td colSpan={5} style={{textAlign: 'center'}}>
+                        <button onClick={handleFirstPage}>First Page</button>
+                        <button onClick={handlePrevPage}>Prev Page</button>
+                        showing record(s) {(user_inventory?.offset) + 1} - {Math.min((user_inventory?.offset) + Number(user_inventory?.pagesize), (user_inventory?.total))} out of {user_inventory?.total}
+                        <button onClick={handleNextPage}>Next Page</button>
+                        <button onClick={handleLastPage}>Last Page</button>
+                    </td>
+                </tr>}
                 <tr><td colSpan={5} style={{textAlign: 'center'}}>
                     <button onClick={() => setAddInventoryOpen(true)}>+ Add Item</button>
                     <Dialog

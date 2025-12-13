@@ -6,7 +6,7 @@ export default async function fetch(url: RequestInfo | URL, init: RequestInit): 
     if (!fk || !fv) return new Response(null, {status: 404})
     const regexGroups = urlstring.match(fk.regex)
     try {
-        const {data, status, statusText = ''} = fv(regexGroups?.groups, init.body)
+        const {data, status, statusText = ''} = fv(regexGroups?.groups, init.body, urlstring)
         return new Response(
             JSON.stringify({data}), // the data key from my history with JSONAPI, I find this abstraction useful sometimes and it's become a habit, not all of JSONAPI, but always a root object makes a lot of sense to me
             {

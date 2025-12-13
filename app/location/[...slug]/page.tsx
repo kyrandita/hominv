@@ -15,7 +15,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
     useEffect(() => {
         (async () => {
             const { slug } = await params;
-            console.log('SLUG', slug)
+            // console.log('SLUG', slug)
             setSlug(slug.join('/'))
         })()
     }, [ params ])
@@ -31,7 +31,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
                 ctx.closePath()
                 // ctx.strokeStyle = `#${loc?.rgb?.toString(16).padStart(6,'0') ?? 'F00'}`
                 ctx.fillStyle = `#${loc?.rgb?.toString(16).padStart(6,'0') ?? 'F00'}`
-                console.log(loc.rgb, loc?.rgb?.toString(16).padStart(6,'0'), ctx)
+                // console.log(loc.rgb, loc?.rgb?.toString(16).padStart(6,'0'), ctx)
                 ctx.fill()
                 ctx.stroke()
             })
@@ -40,6 +40,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
     }
     return <div style={{position: "relative", display: "flex", flexDirection: "column", }}>
         <div style={{maxWidth:'50vw', maxHeight: '50vw', position: 'relative'}}>
+            {/* this canvas shows only direct sublocation polygons, maybe editable here */}
             {!loading && <Canvas draw={canvasDraw} style={{backgroundColor:'lightslategray', width: '100%'}}></Canvas>}
         </div>
         <p>should I draw where this location is in it&apos;s parent as well or just it&apos;s sub-locations?</p>
@@ -69,6 +70,11 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
                     <td style={{color: `#${sl.rgb?.toString(16).padStart(6,'0')}`}}><Link href={`/location/${sl.name}`}>{sl.name}</Link></td>
                 </tr>)}
                 {/* make this sortable by date added as sub-location as well as alpha and maybe sub-location creation date? if it was moved here for example */}
+                <tr><th>Sibling Locations</th></tr>
+                
+                {locationData && locationData.sib.map(sl => <tr key={sl.name}>
+                    <td style={{color: `#${sl.rgb?.toString(16).padStart(6,'0')}`}}><Link href={`/location/${sl.name}`}>{sl.name}</Link></td>
+                </tr>)}
             </tbody>
             <tfoot><tr><th><button>Add sub location</button></th></tr></tfoot>
         </table></>}
