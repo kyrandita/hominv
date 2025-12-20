@@ -35,7 +35,7 @@ export default function AddInventoryForm({OnSubmit}: {OnSubmit?: (formData: Form
             <label>Location<input type="text" name="location" list="loclist"></input></label>
             {/* onBlur if entry is not on the datalist, a subtle reminder that they are creating a new location */}
             <datalist id="loclist">
-                {!loading && locations && locations.map(loc => <option key={loc.loc} value={loc.loc}></option>)}
+                {!loading && locations && locations.map(loc => <option key={loc.name} value={loc.name}></option>)}
             </datalist>
             <label>Description<textarea name="description" placeholder="The successor to the best selling Flaystation 2, flaying nearly twice as many enemies per day as it's predecessor with quadruple the terraflops :D"></textarea></label>
             <label>Serial<input type="text" name="serial"></input></label>

@@ -1,8 +1,9 @@
+/* eslint-disable react-hooks/refs */
 'use client'
 import AddLocationForm from "@/Components/AddLocationForm"
 import { useFetch } from "@/Utils/useFetch"
 import Link from "next/link"
-import { ComponentRef, createRef, useEffect, useRef, useState } from "react"
+import { createRef, useEffect, useRef, useState } from "react"
 
 export default function Locations() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
@@ -17,21 +18,21 @@ export default function Locations() {
         if (!addLocModalOpen && addLocRef?.current?.open) addLocRef.current.close()
     }, [addLocModalOpen])
 
+    // will probably replace each of these entries with it's own action menu into a sub component to avoid this seeming ref mess, React (and Typescript) doesn't seem to like this method
     useEffect(() => {
-        console.log('effect called', user_inventory, dialogRefs.current)
         if (user_inventory && Array.isArray(user_inventory)) {
             // trim down the extra if we've removed some and set new refs if it's grown
             dialogRefs.current = user_inventory.map((_, ind) => dialogRefs.current[ind] ?? createRef())
             // the internet seems to suggest I need this line, I want to test that later...
             dialogRefs.current = dialogRefs.current.map(i => i || createRef())
         }
-        console.log(dialogRefs.current)
     }, [user_inventory])
 
-    function handleActionClick(event, ...rest) {
-        console.log(dialogRefs.current, event.target)
-        dialogRefs.current[event.target.dataset.index]?.current.showModal()
-        // dialogRefs.current[ind]?.showModal()
+    function handleActionClick(event : React.MouseEvent<HTMLButtonElement>) {
+        const ind = Number((event.target as HTMLButtonElement).dataset.index)
+        if (ind) {
+            dialogRefs.current[ind]?.current.showModal()
+        }
     }
     function handleAddLocCloseEvent() {
         setAddLocModalOpen(false)

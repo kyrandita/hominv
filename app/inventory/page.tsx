@@ -35,7 +35,7 @@ export default function Inventory() {
         // maybe clear other params, but if working as designed no other params should exist
         nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
         nurl.searchParams.set('offset',String((user_inventory?.offset ?? 0) + ((user_inventory?.pagesize ?? 0) * pageChange)))
-        if (Number(nurl.searchParams.get('offset')) >= (user_inventory?.total) || Number(nurl.searchParams.get('offset')) < 0) return
+        if (user_inventory && Number(nurl.searchParams.get('offset')) >= (user_inventory?.total) || Number(nurl.searchParams.get('offset')) < 0) return
         setPageUrl(nurl)
     }
 
@@ -48,10 +48,12 @@ export default function Inventory() {
     const handleNextPage = () => changePage(1)
     const handlePrevPage = () => changePage(-1)
     const handleLastPage = () => {
-        const nurl = new URL(pageUrl)
-        nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
-        nurl.searchParams.set('offset', String(Math.floor(user_inventory?.total/user_inventory?.pagesize)*user_inventory?.pagesize))
-        setPageUrl(nurl)
+        if (user_inventory) {
+            const nurl = new URL(pageUrl)
+            nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
+            nurl.searchParams.set('offset', String(Math.floor(user_inventory?.total/user_inventory?.pagesize)*user_inventory?.pagesize))
+            setPageUrl(nurl)
+        }
     }
 
     return <div>

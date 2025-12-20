@@ -17,7 +17,7 @@ export default function AddLocationForm({OnSubmit, }: {OnSubmit?: (formData: For
             {/* the datalist may still make sense here to help users define paths they are adding to, if we stick with full path representation in the UI, though prefilling from the location you are "adding" to would likely work better */}
             <label>Location<input type="text" name="location" list="loclist"></input></label>
             <datalist id="loclist">
-                {!loading && locations && locations.map(loc => <option key={loc.loc} value={loc.loc}></option>)}
+                {!loading && locations && locations.map(loc => <option key={loc.name} value={loc.name}></option>)}
             </datalist>
             <label>Description<textarea name="description" placeholder="Building/Room/Box"></textarea></label>
 

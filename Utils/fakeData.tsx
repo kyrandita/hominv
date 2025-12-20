@@ -104,10 +104,10 @@ type MapKey = {
     methods: string[],
 }
 
-const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => { status: number, statusText?: string, data: object | Location[] | Location | LocationReturn | Item[] | Item | void}>()
+const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => { status: number, statusText?: string, data?: object | Location[] | Location | LocationReturn | Item[] | Item | void}>()
 apiMap.set(
     {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']},
-    ({querystring}, _, urlString) => {
+    ({querystring} = {}, _) => {
         const params = new URLSearchParams(querystring)
         // assume page 1 if no page requested, pagesize defaults to 25
         let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
@@ -147,7 +147,7 @@ apiMap.set(
             const flags = (body as FormData).getAll('flags')
             // bare minimum is to have a name, reminders can be generated for all other fields left unfilled
             if (!name) {
-                return {status: 400, statusText: 'creating new inventory requires at least a name', data: JSON.stringify(['creating new inventory requires at least a name'])}
+                return {status: 400, statusText: 'creating new inventory requires at least a name', data: {errors:['creating new inventory requires at least a name']}}
             }
 
             // TODO in the final version at least trim start of location of any errany whitespace and leading slashes to confuse the path adjacency
@@ -170,16 +170,16 @@ apiMap.set(
             // convert to Item and add to inventory map
             // create Location if needed -- no foreign keys but I want to at least try to emulate the actual DB
             // send success
-            return {status: 200, statusText: 'record created'} // endpoint fail because it's not fully implemented
+            return {status: 200, statusText: 'record created' } // endpoint fail because it's not fully implemented
         } else {
-            return {status: 400, data: JSON.stringify(['endpoint requires form data'])} // no body
+            return {status: 400, data: {errors:['endpoint requires form data']}} // no body
         }
     }
 )
 
 apiMap.set(
     {regex: /^\/api\/inventory\/(?<itemId>\d*)$/, methods: ['GET']},
-    ({itemId}) => ({
+    ({itemId} = {}) => ({
         status: 200,
         data: invList.find(i => i.id === Number(itemId)),
     })
@@ -200,7 +200,7 @@ export type LocationReturn = Location & {
 
 apiMap.set(
     { regex:/^\/api\/location\/(?<slug>.*)$/, methods: ['GET'] },
-    ({slug}) => {
+    ({slug} = {}) => {
         const entry = locList.find((loc) => loc.name === decodeURI(slug))
         if (!entry) { return {status: 404} }
         // then find all sub-locations to include minimal information about

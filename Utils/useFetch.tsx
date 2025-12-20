@@ -23,8 +23,8 @@ export const useFetch = <T,>(url: RequestInfo | URL): { data?: T, loading: boole
                 // though I could provide a transform prop to format the specific instance into what the component needs...
                 // not sure yet how I want to handle that
                 setData((await response.json()).data)
-            } catch (e) {
-                setError(e)
+            } catch (e : unknown) {
+                setError(e as Error)
             } finally {
                 setLoading(false)
             }

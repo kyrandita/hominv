@@ -11,7 +11,7 @@ export default function Dashboard() {
         redirect('/') // TODO better to do this in routing I think, but with the default create next app this is how it is right now
     }
     //TODO define the notification type to at least document what I want to do?
-    const {data: notifications, loading: notificationLoading, error: notificationError} = useFetch('/api/notifications')
+    const {data: notifications, loading: notificationLoading, error: notificationError} = useFetch<{regarding: string[], message: string}[]>('/api/notifications')
     return <div>
         <p>
             widgets would go here showing a breakdown of root locations, maybe a full summary of value stored at each and the totals, reminders could display here if the user wants to periodically audit their possessions? check that things are where they are in the system, or reminders for maintenance of some possessions? not sure if that is a feature that I want just yet. Maybe also a log of activity, added new DVD, sold a car, store sold item paperwork maybe? really not sure yet, will have to see what all comes out as I add features
@@ -28,7 +28,7 @@ export default function Dashboard() {
             </p>
         </div>
         <List>
-            {!notificationLoading && notificationError == null && notifications.map(({regarding, message}) => {
+            {!notificationLoading && notificationError == null && notifications && notifications.map(({regarding, message}) => {
                 // obviously these will have to be 
                 return <ListItem key={regarding.join('-')}>{message}</ListItem>
             })}

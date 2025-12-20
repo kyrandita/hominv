@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
  * It might be better to use some library canvas component to make this work, but right now I wanted to see
  * if I could make it work with less dependencies.
  */
-export default function Canvas({draw, ...rest}:{draw?: (ctx: CanvasRenderingContext2D) => void}) {
+export default function Canvas({draw, ...rest}:{draw?: (ctx: CanvasRenderingContext2D) => void, style: React.CSSProperties}) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
     useEffect(() => {
