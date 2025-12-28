@@ -5,6 +5,8 @@ export default async function fetch(url: RequestInfo | URL, init: RequestInit): 
     const [fk, fv] = apiMap.entries().find(([{regex, methods}, ]) => methods.some(mth => mth==init.method?.toUpperCase()) && regex.test(urlstring)) ?? []
     if (!fk || !fv) return new Response(null, {status: 404})
     const regexGroups = urlstring.match(fk.regex)
+    // adding a small actual async delay to this process to make sure the rest of the UI can handle what will happen in the event of an actual event loop yield
+    await new Promise((res, rej) => setTimeout(() => res(true), 400 + (Math.random() * 600)))
     try {
         const {data, status, statusText = ''} = fv(regexGroups?.groups, init.body, urlstring)
         return new Response(

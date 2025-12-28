@@ -1,42 +1,45 @@
-/* eslint-disable react-hooks/refs */
 'use client'
 import AddLocationForm from "@/Components/AddLocationForm"
-import { useFetch } from "@/Utils/useFetch"
-import Link from "next/link"
-import { createRef, useEffect, useRef, useState } from "react"
+import LocationRow from "@/Components/LocationRow"
+import { Location } from "@/Utils/fakeData"
+import fetch from "@/Utils/fakeFetch"
+import { usePagedFetch } from "@/Utils/usePagedFetch"
+import { MouseEvent, useEffect, useRef, useState } from "react"
 
 export default function Locations() {
-    // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
-    const {data: user_inventory, loading, error} = useFetch('/api/location/list')
-    
+    const [locationURL, setLocationURL] = useState<URL>(new URL('/api/location/list?pagesize=10', globalThis.location?.origin ?? 'http://localhost'))
+    const {data: locations, loading, error, refresh, pageCur, pageTotal, pagefuncs: { toPage, firstPage, prevPage, nextPage, lastPage } } = usePagedFetch<Location>(locationURL)
+
+    // TODO switch this to useDialog
     const [addLocModalOpen, setAddLocModalOpen] = useState(false)
     const addLocRef = useRef<HTMLDialogElement>(null)
-    const dialogRefs = useRef<{current:HTMLDialogElement}[]>([])
 
     useEffect(() => {
         if (addLocModalOpen) addLocRef?.current?.showModal()
         if (!addLocModalOpen && addLocRef?.current?.open) addLocRef.current.close()
     }, [addLocModalOpen])
 
-    // will probably replace each of these entries with it's own action menu into a sub component to avoid this seeming ref mess, React (and Typescript) doesn't seem to like this method
-    useEffect(() => {
-        if (user_inventory && Array.isArray(user_inventory)) {
-            // trim down the extra if we've removed some and set new refs if it's grown
-            dialogRefs.current = user_inventory.map((_, ind) => dialogRefs.current[ind] ?? createRef())
-            // the internet seems to suggest I need this line, I want to test that later...
-            dialogRefs.current = dialogRefs.current.map(i => i || createRef())
-        }
-    }, [user_inventory])
-
-    function handleActionClick(event : React.MouseEvent<HTMLButtonElement>) {
-        const ind = Number((event.target as HTMLButtonElement).dataset.index)
-        if (ind) {
-            dialogRefs.current[ind]?.current.showModal()
-        }
-    }
     function handleAddLocCloseEvent() {
         setAddLocModalOpen(false)
     }
+
+    async function handleNewLocation(fd: FormData) {
+        const fr = await fetch('/api/location', { method: 'post', body: fd })
+        if (fr.ok) {
+            refresh(true)
+            setAddLocModalOpen(false)
+        }
+        return fr.ok
+    }
+
+    const handleFirstPageClick = () => setLocationURL(firstPage())
+    const handlePrevPageClick = () => setLocationURL(prevPage())
+    const handleNextPageClick = () => setLocationURL(nextPage())
+    const handleLastPageClick = () => setLocationURL(lastPage())
+    const handleNumericPageClick = (e: MouseEvent<HTMLButtonElement>) => {
+        setLocationURL(toPage(Number(e.currentTarget.dataset.pagenum ?? 1)))
+    }
+
     return <div>
         <p>List of Locations, not sure how useful this is yet</p>
         <table>
@@ -49,30 +52,49 @@ export default function Locations() {
                 </tr>
             </thead>
             <tbody>
-            {!loading && Array.isArray(user_inventory) && user_inventory?.map(({loc, quad, rgb}, ind) => 
-                <tr key={loc}>
-                    <td><Link href={`/location/${loc}`}>{loc}</Link></td>
-                    <td>{JSON.stringify(quad)}</td>
-                    <td>{rgb.toString(16).toUpperCase().padStart(6, "0")}</td>
-                    <td>
-                        <button data-index={ind} onClick={handleActionClick}>action menu</button>
-                        <dialog ref={dialogRefs.current[ind]} id={`${ind}-actions`}>
-                            <p>action menu pertaining to record {loc}</p>
-                            <button>add sub-location</button>
-                            <button>remove location</button>
-                        </dialog>
-                    </td>
-                </tr>
+            {!loading && locations && locations?.records.map((location, ind) => 
+                <LocationRow key={location.name} location={location}></LocationRow>
             )}
             </tbody>
             <tfoot>
+                <tr>{locations && 
+                    <td colSpan={5} style={{textAlign: 'center'}}>
+                        <button onClick={handleFirstPageClick}>First Page</button>
+                        <button onClick={handlePrevPageClick}>Prev Page</button>
+                        showing record(s) {(locations.offset) + 1} - {Math.min((locations?.offset) + Number(locations?.pagesize), (locations?.total))} out of {locations?.total}
+                        <button onClick={handleNextPageClick}>Next Page</button>
+                        <button onClick={handleLastPageClick}>Last Page</button>
+                    </td>}
+                </tr>
+                <tr>
+                    {locations && <td colSpan={5} style={{textAlign: 'center'}}>
+                        {pageCur > 3 && <button onClick={handleFirstPageClick}>1</button>}
+                        {pageCur > 4 && <span>…</span>}
+                        {[...Array(Math.min(pageTotal, 5)).keys()].map(i => {
+                            // this is recalculating on each iteration, not a good solution, just how I threw it together first
+                            // TODO I'll probably refactor this soon
+                            const siblings = 2
+                            const offset = Math.max(1 - pageCur, -siblings) + pageCur + (pageTotal > siblings*2 ? Math.min(pageTotal - siblings - pageCur, 0) : 0)
+                            return <button
+                                key={`pageindicator${String(i + offset).padStart(3,'0')}`}
+                                style={{color: i+offset == pageCur ? 'blue': 'red'}}
+                                onClick={handleNumericPageClick}
+                                data-pagenum={i+offset}
+                                >
+                                    {i + offset}
+                                </button>
+                        })}
+                        {pageCur < pageTotal - 3 && <span>…</span>}
+                        {pageCur < pageTotal - 2 && <button onClick={handleLastPageClick}>{pageTotal}</button>}
+                    </td>}
+                </tr>
                 <tr><td colSpan={4}>
                     <button onClick={() => setAddLocModalOpen(true)}>Add Location</button>
                 </td></tr>
             </tfoot>
         </table>
         <dialog ref={addLocRef} onClose={handleAddLocCloseEvent}>
-            {addLocModalOpen && <AddLocationForm></AddLocationForm>}
+            {addLocModalOpen && <AddLocationForm OnSubmit={handleNewLocation}></AddLocationForm>}
         </dialog>
     </div>
 }

@@ -14,15 +14,11 @@ export default function AddInventoryForm({OnSubmit}: {OnSubmit?: (formData: Form
         // but I'm using the component unmanaged so this should not be a problem
     }
 
-    useEffect(() => {
-        console.log(locations, loading, error)
-    }, [locations])
-
-    function handleFormSubmit(e: FormEvent) {
+    async function handleFormSubmit(e: FormEvent) {
         e.preventDefault()
         const fd = new FormData(e.target as HTMLFormElement)
         flags?.forEach(flag => fd.append('flags', flag))
-        OnSubmit?.(fd)
+        await OnSubmit?.(fd)
     }
 
     return <>

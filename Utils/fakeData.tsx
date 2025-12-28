@@ -17,6 +17,15 @@ export type Item = {
     serial?: string, // TODO include links or explanations why storing serial inventory is important for emergency situations
 }
 
+function* generateLocations(total = 100) {
+    yield { name: "generated" }
+    let i = 1
+    while (i < total) {
+        yield { name: "generated/Location" + i.toString().padStart(3,'0') }
+        i+=1
+    }
+}
+
 const locList: Location[] = [
     {
         name: 'Home(555 nowhere ave)',
@@ -72,6 +81,7 @@ const locList: Location[] = [
         quad: [150,0,200,25],
         rgb: 0x44DDEE
     },
+    ...generateLocations(103)
 ]
 
 let newInvId = 5
@@ -104,6 +114,17 @@ type MapKey = {
     methods: string[],
 }
 
+const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): {offset: number, pagesize: number, total: number, records: Array<T|U>} => {
+    // logic for if offset goes past array size and such
+    const records = data.slice(offset, offset + pagesize)
+    return {
+        offset,
+        pagesize,
+        total: data.length,
+        records: transform ? records.map(transform) : records
+    }
+}
+
 const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => { status: number, statusText?: string, data?: object | Location[] | Location | LocationReturn | Item[] | Item | void}>()
 apiMap.set(
     {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']},
@@ -122,12 +143,7 @@ apiMap.set(
         // add sort by column options
         return { // records contain only minimal information about stored inventory
             status: 200,
-            data: {
-                offset,
-                pagesize, // I think a more standard term might be limit... might change it later
-                total: invList.length,
-                records: invList.slice(offset, offset+pagesize),
-            },
+            data: getPageData(invList, offset, pagesize),
         }
     }
 )
@@ -186,11 +202,47 @@ apiMap.set(
 )
 
 apiMap.set(
-    { regex: /\/api\/location\/list/, methods: ['GET']},
-    () => ({
-        status: 200,
-        data: locList.map((loc) => ({loc: loc.name, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}))
-    })
+    { regex: /\/api\/location\/list(?:\?(?<querystring>.*)|)/, methods: ['GET']},
+    ({querystring} = {}, _, url) => {
+        const params = new URLSearchParams(querystring)
+        let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
+        pagesize = Number(pagesize)
+        offset = Number(offset)
+        if (pagesize <= 10) {
+            pagesize = 10
+        }
+        if (offset < 0) {
+            offset = 0
+        }
+        return ({
+            status: 200,
+            // data: locList.map((loc) => ({name: loc.name, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}))
+            data: getPageData(locList, offset, pagesize),
+        })
+    }
+)
+
+apiMap.set(
+    { regex: /\/api\/location/, methods:['POST']},
+    (_, body) => {
+        if (body instanceof FormData) {
+            const {location = '', description = ''}: {location: string, description: string} = {location:'', description: '', ...Object.fromEntries(body.entries())}
+            const newLoc = { 
+                name: location,
+                description,
+            }
+            if (newLoc.name) {
+                if (newLoc.name == 'error')
+                    return {status: 500}
+                locList.push(newLoc)
+                return { status: 200 }
+            }
+        }
+        return {
+            status: 405,
+            data: {}
+        }
+    }
 )
 
 export type LocationReturn = Location & {

@@ -4,12 +4,13 @@ import { useFetch } from "@/Utils/useFetch"
 import fetch from "@/Utils/fakeFetch"
 import { Dialog } from "@mui/material"
 import Link from "next/link"
-import { FormEvent, useEffect, useState } from "react"
+import { useState } from "react"
 import { Item } from "@/Utils/fakeData"
 
 export default function Inventory() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
     const [pageUrl, setPageUrl] = useState(new URL('/api/inventory', globalThis.location?.origin ?? 'http://localhost'))
+    // TODO switch to usePagedFetch since I went to the effort to make it
     const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch<{records:Item[], offset: number, pagesize: number, total: number}>(pageUrl)
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
 
