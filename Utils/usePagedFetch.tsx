@@ -2,7 +2,8 @@ import { FetchReturn, useFetch } from "./useFetch"
 
 // obviously this hook only works for endpoints using my quickly thrown together pagination interface
 // but the concept should work for others with minor adjustments
-// there are undoubtedly hooks that accomplish this same thing in some awesome library somewhere
+// there are undoubtedly hooks that accomplish this same thing in some library somewhere
+// in some more standardized pagination format
 
 export type PagedAPI<T = never> = {
     records: T[],
@@ -21,7 +22,7 @@ export type PagedFetchReturn<T> = FetchReturn<PagedAPI<T>> & {
         nextPage: () => URL,
         prevPage: () => URL,
         lastPage: () => URL,
-        changePageSize: (newPageSize: number) => URL,
+        changePageSize: (newPageSize: number, roundToPage?: boolean) => URL,
     }
 }
 
@@ -115,7 +116,7 @@ export const usePagedFetch = <T,>(url: RequestInfo | URL): PagedFetchReturn<T> =
         const nurl = new URL(urlstring)
         if (data) {
             // if rounding this rounds down to nearest page that will in theory contain the first record of the current page/offset
-            nurl.searchParams.set('offset', String(roundToPage ? Math.floor(data.offset / data.pagesize) * data.pagesize : data.offset))
+            nurl.searchParams.set('offset', String(roundToPage ? Math.floor(data.offset / newPageSize) * newPageSize : data.offset))
             nurl.searchParams.set('pagesize', String(Math.max(Math.floor(newPageSize), 1)))
         }
         return nurl

@@ -1,4 +1,4 @@
-import { Location } from "@/Utils/fakeData";
+import { Location } from "@/Utils/fakeData.js";
 import { useFetch } from "@/Utils/useFetch";
 import { Autocomplete, TextField } from "@mui/material";
 import { FormEvent, SyntheticEvent, useEffect, useState } from "react";
@@ -6,7 +6,9 @@ import { FormEvent, SyntheticEvent, useEffect, useState } from "react";
 export default function AddInventoryForm({OnSubmit}: {OnSubmit?: (formData: FormData) => void}) {
 
     const [flags, setFlags] = useState<string[]>()
-    const {data: locations, loading, error} = useFetch<Location[]>('/api/location/list')
+    // this is a paginated endpoint I'm faking to only grab the first 50 records statically right now, well beyond the start of generated fake data
+    // TODO replace this with a fuzzy search eventually... unless total location amount is small enough... TBD
+    const {data: locations, loading, error} = useFetch<{records: Location[]}>('/api/location/list?pagesize=50')
 
     function handleFlagOnChange(e: SyntheticEvent, v: string[]) {
         setFlags(v)
@@ -31,7 +33,7 @@ export default function AddInventoryForm({OnSubmit}: {OnSubmit?: (formData: Form
             <label>Location<input type="text" name="location" list="loclist"></input></label>
             {/* onBlur if entry is not on the datalist, a subtle reminder that they are creating a new location */}
             <datalist id="loclist">
-                {!loading && locations && locations.map(loc => <option key={loc.name} value={loc.name}></option>)}
+                {!loading && locations && locations.records.map(loc => <option key={loc.name} value={loc.name}></option>)}
             </datalist>
             <label>Description<textarea name="description" placeholder="The successor to the best selling Flaystation 2, flaying nearly twice as many enemies per day as it's predecessor with quadruple the terraflops :D"></textarea></label>
             <label>Serial<input type="text" name="serial"></input></label>

@@ -1,21 +1,22 @@
 'use client'
-import React, { PropsWithChildren, useEffect, useReducer } from "react";
+import { redirect } from "next/navigation"
+import React, { PropsWithChildren, useEffect, useReducer } from "react"
 
 class UserState {
-    public username: string;
+    public username: string
     public constructor({username = ''} = {}) {
-        this.username = username;
+        this.username = username
     }
     
     get isLoggedIn() {
-        return Boolean(this.username);
+        return Boolean(this.username)
     }
 
     get welcomeMessage() {
         if (this.isLoggedIn) {
-            return `Welcome ${this.username}`;
+            return `Welcome ${this.username}`
         }
-        return 'not Logged in';
+        return 'not Logged in'
     }
 }
 
@@ -24,8 +25,8 @@ type UContext = {
     dispatch?: React.ActionDispatch<[action: UserContextActions]>,
 }
 const MixedContext = React.createContext<UContext>({})
-const UserContext = React.createContext<UserState>(new UserState());
-const DispatchContext = React.createContext<React.ActionDispatch<[action: UserContextActions]> | null>(null);
+const UserContext = React.createContext<UserState>(new UserState())
+const DispatchContext = React.createContext<React.ActionDispatch<[action: UserContextActions]> | null>(null)
 
 interface LoginAction {
     type: 'login',
@@ -45,11 +46,12 @@ function ProviderComponent ({ children }: PropsWithChildren) {
         switch (action.type) {
             case 'login':
                 // if token is defined, would check with server if token is valid and retrieve actual user data and such... maybe not right here... not sure yet
-                window.sessionStorage.setItem('loginToken', 'ABCD')
+                window.sessionStorage.setItem('loginToken', action.token ?? 'ACBD')
                 return new UserState({username:'HLuker'});
             case 'logout':
                 // it may be prudent to `.clear()` instead, but for my purposes right now this is enough
                 window.sessionStorage.removeItem('loginToken')
+                redirect('/')
                 return new UserState()
             default:
                 return prevState;
@@ -69,6 +71,7 @@ function ProviderComponent ({ children }: PropsWithChildren) {
     return (
         <UserContext.Provider value={state}>
             <DispatchContext.Provider value={dispatch}>
+                {/* this is mostly here for testing, if mixedProvider works without strange refresh behavior, then it's the only needed one */}
                 <MixedContext.Provider value={{ dispatch, user: state }}>
                     {children}
                 </MixedContext.Provider>

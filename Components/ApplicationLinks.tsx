@@ -8,13 +8,10 @@ export default function ApplicationLinks() {
 
   const user = useContext(UserContext)
     return <>
-        {user.isLoggedIn ? <>
+        {user.isLoggedIn && <>
         <Link href={"/dashboard"}>Dashboard</Link>
         <Link href={'/inventory'}>Inventory</Link>
         <Link href={'/location'}>Locations</Link>
-        </>
-        :
-        <>
         </>
         }
     </>

@@ -6,6 +6,8 @@ export type Location = {
     rgb?: number,
     last_modified?: Date, // probably will be generated or gotten from the last-edited of the items within the location? not sure what makes sense yet
     // sub locations are just other locations with this path as a prefix... so not stored here as data
+    // TODO consider adding a storage/organizational boolean to indicate a location will never store items itself but is only used as distinction, mostly to eliminate it from notifications of audits, though what to do if it's marked as such but actually contains inventory... TBD
+    // perhaps active inventory placed into 'organizational' locations will be treated the same as no location?
 }
 
 export type Item = {
@@ -17,10 +19,10 @@ export type Item = {
     serial?: string, // TODO include links or explanations why storing serial inventory is important for emergency situations
 }
 
-function* generateLocations(total = 100) {
+function* generateLocations() {
     yield { name: "generated" }
     let i = 1
-    while (i < total) {
+    while (true) {
         yield { name: "generated/Location" + i.toString().padStart(3,'0') }
         i+=1
     }
@@ -29,13 +31,16 @@ function* generateLocations(total = 100) {
 const locList: Location[] = [
     {
         name: 'Home(555 nowhere ave)',
+        description: 'Main location for this home, organizational, not intended to contain direct inventory',
         quad: [0,0,600,400],
         rgb: 0xCADD1E,
         last_modified: new Date(Date.now()-(1000*60*60*24*30*3)),
+        notes: 'other things to say about the house',
     },
     {
         name: 'Home(555 nowhere ave)/Kitchen',
         quad: [200,100, 500, 100, 500,300, 400,300, 400,250, 200,250],
+        last_modified: new Date(Date.now()-(1000*60*60*24*30*3)),
         rgb: 0xF000F1,
     },
     {
@@ -48,7 +53,7 @@ const locList: Location[] = [
         description: 'Storage Closet',
         quad: [100,250, 400,250, 400,700, 100,700],
         rgb: 0x00FF00,
-        notes: 'Closet A is primarily storage for old toys, not suitable for electronics, being in the garage it is not sealed to moisture and tech/electronic media will be damage over time if not properly insulated',
+        notes: 'not within the conditioned envelope of the house',
     },
     {
         name: 'Home(555 nowhere ave)/Garage/ClosetA',
@@ -57,7 +62,8 @@ const locList: Location[] = [
     },
     {
         name: 'Home(555 nowhere ave)/PrimaryBed',
-        quad: [],
+        quad: [450,450, 500,400, 550,450, 600,400, 650,450, 550,550],
+        rgb: 0x8800FF,
     },
     {
         name: 'Home(555 nowhere ave)/Bedroom1',
@@ -81,7 +87,7 @@ const locList: Location[] = [
         quad: [150,0,200,25],
         rgb: 0x44DDEE
     },
-    ...generateLocations(103)
+    ...generateLocations().take(103)
 ]
 
 let newInvId = 5
@@ -93,6 +99,7 @@ function* generateItems(total = 100) {
         yield {
             id: newInvId++,
             name: "randomItem" + i.toString().padStart(3,'0'),
+            location: "generatedStoreroom", // doesn't exist in locations, but for the purposes of this being generated data not sure if that matters
             qty: 1,
         }
 
@@ -246,6 +253,7 @@ apiMap.set(
 )
 
 export type LocationReturn = Location & {
+    last_modified: string | undefined,
     sub: Location[]
     sib: Location[]
 }
@@ -296,6 +304,11 @@ apiMap.set(
 // const date3monthsago = Temporal.Now.plainDateISO().subtract(Temporal.Duration.from('P3M')) // if the Temporal API gets approved before I replace these faker functions
 const date3monthsago = new Date()
 date3monthsago.setMonth(date3monthsago.getMonth() - 3) // this frequency should be configurable
+
+/*
+ * The actual API of this will need to be much more complex, but I may leave that for building the actual thing
+ * this shows the concept enough for this stage
+ */
 apiMap.set(
     { regex:/^\/api\/notifications$/, methods: ['GET']},
     () => ({
@@ -304,7 +317,7 @@ apiMap.set(
             ...invList
                 .filter(a => !a.location) // this is a poor version of this condition, not sure what the actual DB values are gonna be
                 .map(({id, name, location}) => ({
-                    regarding: ['item', id],
+                    regarding: ['item', id, `"${name}"`],
                     message: `item "${name}" is listed as having no location (${location}), this is a reminder to fill in this additional information when you have a moment`,
                 })),
             ...locList

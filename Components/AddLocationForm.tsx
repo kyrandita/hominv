@@ -1,10 +1,12 @@
-import { Location } from "@/Utils/fakeData";
+import { Location } from "@/Utils/fakeData.js";
 import { useFetch } from "@/Utils/useFetch";
 import { FormEvent, useState } from "react";
 
 export default function AddLocationForm({OnSubmit, }: {OnSubmit?: (formData: FormData) => void}) {
     const [sending, setSending] = useState(false)
-    const {data: locations, loading, error} = useFetch<Location[]>('/api/location/list')
+    // this is a paginated endpoint I'm faking to only grab the first 50 records statically right now, well beyond the start of generated fake data
+    // TODO replace this with a fuzzy search eventually... unless total location amount is small enough... TBD
+    const {data: locations, loading, error} = useFetch<{records:Location[]}>('/api/location/list?pagesize=50')
 
     async function handleFormSubmit(e: FormEvent) {
         if (!sending) { // do nothing if form has already been submitted and are awaiting latest response
@@ -23,7 +25,7 @@ export default function AddLocationForm({OnSubmit, }: {OnSubmit?: (formData: For
         {/* the datalist may still make sense here to help users define paths they are adding to, if we stick with full path representation in the UI, though prefilling from the location you are "adding" to would likely work better */}
         <label>Location<input type="text" name="location" list="loclist"></input></label>
         <datalist id="loclist">
-            {!loading && locations && locations.map(loc => <option key={loc.name} value={loc.name}></option>)}
+            {!loading && locations && locations.records.map(loc => <option key={loc.name} value={loc.name}></option>)}
         </datalist>
         <label>Description<textarea name="description" placeholder="Building/Room/Box"></textarea></label>
         <input type="submit"></input>

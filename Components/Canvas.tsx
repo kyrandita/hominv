@@ -21,7 +21,7 @@ export default function Canvas({draw, ...rest}:{draw?: (ctx: CanvasRenderingCont
 
     return <canvas
         // I am intentionally scaling the canvas to keep the 'relative' dimensions of the location correct
-        // compressing or stretching the displayed representation
+        // compressing or stretching the displayed representation, not good for a generalized component
         ref={canvasRef}
         width={1000}
         height={1000}

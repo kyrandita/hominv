@@ -32,13 +32,11 @@ export default function RootLayout({
     <html lang="en">
       <ProviderComponent>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased  min-h-screen`}>
-          <nav style={{display:"flex", justifyContent: "space-between", alignItems: "center", background: "#333"}}>
+          <header style={{display:"flex", justifyContent: "space-between", alignItems: "center", background: "#333"}}>
             <Link href="/"><Image src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
             <ApplicationLinks></ApplicationLinks>
-            <div>
-              <UserStateNavElement></UserStateNavElement>
-            </div>
-          </nav>
+            <UserStateNavElement></UserStateNavElement>
+          </header>
           {children}
         </body>
       </ProviderComponent>

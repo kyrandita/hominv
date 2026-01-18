@@ -6,9 +6,19 @@ import fetch from "./fakeFetch";
 // but it may be smart to allow a more controlled cache in some scenarios...
 
 export type FetchReturn<T> = {
-    data?: T, loading: boolean, error: Error|null, refresh: (silent?:boolean) => void 
+    data?: T,
+    loading: boolean,
+    error: Error|null,
+    refresh: (silent?:boolean) => Promise<T>
 }
 
+/* 
+ * TODO may want to switch this to follow the use-http library model instead, it seems to allow greater control
+ * to the component of when calls are made and Promise handling isn't relegated to useEffect watching hook output
+ * data storage is also left to the component which can then filter it down or transform it as needed internally
+ * 
+ * though, 
+ */
 export const useFetch = <T,>(url: RequestInfo | URL): FetchReturn<T> => {
     const [data, setData] = useState<T | undefined>()
     const [loading, setLoading] = useState(true)
@@ -23,13 +33,16 @@ export const useFetch = <T,>(url: RequestInfo | URL): FetchReturn<T> => {
                 setLoading(!silent)
                 const response = await fetch(url, {method: 'GET'})
                 if (!response.ok) {
-                    throw new Error('Request Error: ' + response.statusText)
+                    throw new Error('Request Error: ' + response.statusText + '::' + response.status + '%%' + url)
                 }
                 // this strips the root object and all other meta keys from the object and only can be done here because
                 // this is my version of useFetch... I probably won't do this later in the project as the additional meta keys will become useful
                 // though I could provide a transform prop to format the specific instance into what the component needs...
                 // not sure yet how I want to handle that
-                setData((await response.json()).data)
+                const d = (await response.json()).data
+                setData(d)
+                setError(null)
+                return d
             } catch (e : unknown) {
                 setError(e as Error)
             } finally {
@@ -43,4 +56,4 @@ export const useFetch = <T,>(url: RequestInfo | URL): FetchReturn<T> => {
     }, [url, refresh])
 
     return { data, loading, error, refresh }
-};
+}

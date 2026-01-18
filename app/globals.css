@@ -1,8 +1,13 @@
-@import "tailwindcss";
+/* @import "tailwindcss"; */
 
 :root {
   --background: #FFF;
   --foreground: #171717;
+  @media (prefers-color-scheme: dark) {
+    --background: #1a1a1a;
+    --foreground: #ededed;
+  }
+  overflow: hidden;
 }
 
 @theme inline {
@@ -12,29 +17,62 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #1a1a1a;
-    --foreground: #ededed;
-  }
-}
-
 @layer base {
   *, ::backdrop {
     margin: revert;
   }
+
+  body {
+    position:absolute;
+    display: flex;
+    flex-direction: column;
+    margin:0;
+    padding: .5em .5em 0;
+    top: 5em;
+    height: calc(100vh - 5.5em);
+    width: calc(100vw - 1em);
+    overflow-y: auto;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  body > header {
+    box-sizing: border-box;
+    position: fixed;
+    top:0;
+    left: 0;
+    right: 0;
+    padding: .5em .5em 0;
+    max-height: 5em;
+  }
+  a:any-link {
+    /* 2 points I agree with most css frameworks on, links should not change */
+    color: inherit;
+    text-decoration: inherit;
+  }
 }
 
-body {
-  display: flex;
-  flex-direction: column;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+body > *{
+  /* background-color: gray; */
+}
+
+body main {
+  /* background-color: black; */
 }
 
 button {
-  border: 1px solid white;
+  color: inherit;
+  border-radius: 6px;
+  corner-shape: bevel;
   margin: 2px 5px;
   padding: 3px;
+  background-color: inherit;
+  @media (prefers-color-scheme: dark) {
+    border: 1px solid white;
+  }
+}
+
+.card {
+  background-color: #20203388;
 }
