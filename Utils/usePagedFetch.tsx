@@ -6,7 +6,7 @@ import { FetchReturn, useFetch } from "./useFetch"
 // in some more standardized pagination format
 
 export type PagedAPI<T = never> = {
-    records: T[],
+    records: Array<T>,
     offset: number, // min 0, max record count -1 or however I treat asking for offset out of bounds
     pagesize: number, // min 1, max ... not sure there is a good reason to limit max, let the developer choose it based off the data returned
     total: number, // total record count, this might be restricted to records the current user can know about if it's a restricted data set, but it should help the UI determine it's next/prev pagination controls

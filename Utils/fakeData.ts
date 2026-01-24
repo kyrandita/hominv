@@ -1,3 +1,19 @@
+import { PagedAPI } from "./usePagedFetch"
+
+/** hard coded for fake data, will obviously be customizable in a DB foreign key setup... */
+export const Categories = [
+    "electronic_device",
+    "electronic_media", // physical digital media, raises the question of categorical order, or even exclusivity, books, vinyl albums, VHS tapes, music cds, DVDs, each media but not all digital, not all electronic. the classic categorization problem and possibly demonstrating the issue in "summarizing" inventory by non exclusive categories, though maybe I can just do 'primary' category if I allow them to be treated as union types in a sense... to think about
+    "appliances_kitchen",
+    "appliances_laundry",
+    "appliances_tools",
+    "appliances_yard",
+    "textiles_clothing",
+    "textiles_bedding",
+    "textiles_decor",
+    "furniture", // could have other subcategories, but this is enough for the pre-DB example
+]
+
 export type Location = {
     name: string,
     description?: string,
@@ -13,6 +29,7 @@ export type Location = {
 export type Item = {
     id: number,
     name: string,
+    categories: Array<string>,
     qty: number, // not sure if this makes sense, if I even allow a single item entry to be reused either all the uniquely identifying data would either be on the pivot table to location or all qty of an entry must share the same data
     description?: string,
     location?: string,
@@ -95,24 +112,40 @@ let newInvId = 5
 /** this function should only get run once when the fake data generates or when the next server clears for whatever reason, doesn't matter since it's just dumping in a bunch of random crap to show pagination working */
 function* generateItems(total = 100) {
     let i = 0
+    const maxCat = Categories.length
     while (i++ < total) {
+        const categories: Array<string> = []
+        const ind = Math.floor(Math.random() * (Categories.length + 1))
+        if (ind < maxCat) {
+            categories.push(Categories[ind])
+        }
         yield {
             id: newInvId++,
             name: "randomItem" + i.toString().padStart(3,'0'),
             location: "generatedStoreroom", // doesn't exist in locations, but for the purposes of this being generated data not sure if that matters
             qty: 1,
+            categories,
         }
-
     }
 }
 
 const invList: Item[] = [
-    {id: 0xABCDEF, name: 'TV', qty: 1, location: 'Home(555 nowhere ave)/Living Room'},
-    {id: 0xFFFFFF, name: 'Kitchenaid', qty: 1, location: 'Home(555 nowhere ave)/Kitchen/Pantry'},
-    {id: 0xFEDCBA, name: 'Bandsaw', qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
-    {id: 0x1,      name: 'Playstation 5', serial: "qwertyuiop", qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
-    {id: 2, qty: 1, name: 'added-thing', location: ''},
-    {id: 3, qty: 1, name: 'thing 3', location: ''},
+    {
+        id: 0xABCDEF,
+        name: 'TV',
+        // add short description to item data
+        description: "FONY Kravia, Mom bought me this when I left for college, Display model from a Could9 I think. RCA jacks haven\'t worked in years",
+        // include purchase data
+        categories: [Categories[0], Categories[1]],
+        qty: 1,
+        location: 'Home(555 nowhere ave)/Living Room',
+        serial: 'FNY-KV-8756383',
+    },
+    {id: 0xFFFFFF, name: 'Kitchenaid', categories: [Categories[2]], qty: 1, location: 'Home(555 nowhere ave)/Kitchen/Pantry'},
+    {id: 0xFEDCBA, name: 'Bandsaw', categories: [Categories[4]], qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
+    {id: 0x1,      name: 'Playstation 5', categories: [Categories[0]], serial: "qwertyuiop", qty: 1, location: 'Storage Unit (123 college town dr)/Pallet2'},
+    {id: 2, qty: 1, name: 'added-thing', categories: [Categories[6]], location: ''},
+    {id: 3, qty: 1, name: 'thing 3', categories: [], location: ''},// uncategorized on purpose
     ...generateItems(500)
 ]
 
@@ -121,7 +154,7 @@ type MapKey = {
     methods: string[],
 }
 
-const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): {offset: number, pagesize: number, total: number, records: Array<T|U>} => {
+const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): PagedAPI<T|U> => {
     // logic for if offset goes past array size and such
     const records = data.slice(offset, offset + pagesize)
     return {
@@ -178,6 +211,7 @@ apiMap.set(
             const newInv = {
                 id: newInvId++,
                 name: name.toString(),
+                categories: [],
                 description,
                 ...(serial ? {serial} : {}),
                 qty: 1,
@@ -227,6 +261,26 @@ apiMap.set(
             data: getPageData(locList, offset, pagesize),
         })
     }
+)
+
+apiMap.set(
+    {regex: /^\/api\/inventory\/summary(?:\?(?<querystring>.*)|)/, methods: ['GET']},
+    () => ({
+        status: 200,
+        data: invList.reduce((acc, cur) => {
+            /*
+             * What should I summarize here?
+             * - categorized/uncategorized?
+             * - total inventory value?
+             * - something condition related?
+             * - serialized information?
+             * merely reporting category counts might be the first implementation, after adding categories at least
+             * but I'm not entirely sure what other useful information would be useful to the user
+             */
+            const catkey = cur.categories[0] ?? 'uncategorized' // first category to choose 'primary' or default
+            return { total: acc.total + 1, cat: {...acc.cat, [catkey]: (acc.cat[catkey] ?? 0) + 1 } }
+        }, { total: 0, cat: {'uncategorized': 0} }),
+    })
 )
 
 apiMap.set(

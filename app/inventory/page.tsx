@@ -69,16 +69,18 @@ export default function Inventory() {
                     <tr>
                         <th>Item Name</th>
                         <th>Quantity</th>
+                        <th>Category</th>
                         <th>Location</th>
                         <th>Description</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                {user_inventory && Array.isArray(user_inventory.records) && user_inventory.records.map(({id, name, qty, description, location}) => 
+                {user_inventory && Array.isArray(user_inventory.records) && user_inventory.records.map(({id, name, categories, qty, description, location}) => 
                     <tr key={name}>
                         <td><Link href={`/item/${id}`}>{name}</Link></td>
                         <td>{qty}</td>
+                        <td>{categories.join(', ')}</td>
                         <td><Link href={`/location/${name}`}>{location}</Link></td>
                         <td>{description}</td>
                         <td><button onClick={() => alert('remove/sell/move item sub menu')}>action menu</button></td>

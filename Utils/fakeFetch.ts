@@ -17,6 +17,7 @@ export default async function fetch(url: RequestInfo | URL, init: RequestInit): 
             }
         )
     } catch (e) {
-        return new Response(null, { status: 500 }) //
+        console.log(e)
+        return new Response(null, { status: 500, }) //
     }
 }

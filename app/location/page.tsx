@@ -80,7 +80,7 @@ export default function Locations() {
                     // TODO I'll probably refactor this soon
                     const siblings = 2
                     const offset = Math.max(Math.max(1 - pageCur, -siblings) + pageCur + Math.min(Math.max(pageTotal, 5) - siblings - pageCur, 0), -pageCur + 1)
-                    console.log(offset, pageCur)
+                    
                     return <button
                         key={`pageindicator${String(i + offset).padStart(3,'0')}`}
                         style={{color: i+offset == pageCur ? 'blue': 'red'}}
