@@ -267,7 +267,7 @@ apiMap.set(
     {regex: /^\/api\/inventory\/summary(?:\?(?<querystring>.*)|)/, methods: ['GET']},
     () => ({
         status: 200,
-        data: invList.reduce((acc, cur) => {
+        data: invList.reduce<{total: number, cat: {[key: string]: number}}>((acc, cur) => {
             /*
              * What should I summarize here?
              * - categorized/uncategorized?
