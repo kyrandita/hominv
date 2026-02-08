@@ -32,6 +32,7 @@ export const useFetch = <T,>(url: RequestInfo | URL): FetchReturn<T> => {
             try {
                 setLoading(!silent)
                 const response = await fetch(url, {method: 'GET'})
+                console.log(response)
                 if (!response.ok) {
                     throw new Error('Request Error: ' + response.statusText + '::' + response.status + '%%' + url)
                 }

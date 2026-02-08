@@ -8,6 +8,7 @@ import { Item } from "@/Utils/fakeData.js"
 import { usePagedFetch } from "@/Utils/usePagedFetch"
 
 import './page.css'
+import { useFetch } from "@/Utils/useFetch"
 
 export default function Inventory() {
     // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
@@ -15,6 +16,7 @@ export default function Inventory() {
     // TODO switch to usePagedFetch since I went to the effort to make it
     // const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch<{records:Item[], offset: number, pagesize: number, total: number}>(pageUrl)
     const {data:user_inventory, loading, error, refresh:inventoryRefresh, pagefuncs:{changePage, firstPage, lastPage}} = usePagedFetch<Item>(pageUrl)
+    const {data: catData, loading: catLoading, error: catError} = useFetch<Array<string>>('/api/category')
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
 
     function handleAddFormSubmit(fd:FormData) {
@@ -83,7 +85,7 @@ export default function Inventory() {
                         <td>{categories.join(', ')}</td>
                         <td><Link href={`/location/${name}`}>{location}</Link></td>
                         <td>{description}</td>
-                        <td><button onClick={() => alert('remove/sell/move item sub menu')}>action menu</button></td>
+                        <td><button style={{fontSize: '1.5em', borderStyle: 'none', padding: '0 1em'}} onClick={() => alert('remove/sell/move item sub menu')}>≡</button></td>
                     </tr>
                 )}
                 </tbody>
@@ -113,6 +115,7 @@ export default function Inventory() {
             <button>Export CSV for insurance claim</button>{/* including by default additional information like current valuation, purchase price, purchase date... all that stuff insurance companies want in case of a claim */}
             <button>export DB backup</button>{/* since this app is intended to be self-hosted, this function should actually be automatable to an offsite DB in case the very server it's hosted on is part of the loss claim */}
             <button>Print hard copy</button>{/* in case you want paper records */}
+            <div>some  {catData && catData.toString()} words</div>
             {/* all of these should be filterable to selected locations/items and selected fields, smart defaults if possible and maybe configurable reports, more things TODO in the DB */}
         </footer>
     </main>

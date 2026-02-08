@@ -1,6 +1,6 @@
 import { PagedAPI } from "./usePagedFetch"
 
-/** hard coded for fake data, will obviously be customizable in a DB foreign key setup... */
+/** hard coded for fake data, will obviously be customizable in a DB foreign key setup..., along with category colors for display tags */
 export const Categories = [
     "electronic_device",
     "electronic_media", // physical digital media, raises the question of categorical order, or even exclusivity, books, vinyl albums, VHS tapes, music cds, DVDs, each media but not all digital, not all electronic. the classic categorization problem and possibly demonstrating the issue in "summarizing" inventory by non exclusive categories, though maybe I can just do 'primary' category if I allow them to be treated as union types in a sense... to think about
@@ -34,6 +34,11 @@ export type Item = {
     description?: string,
     location?: string,
     serial?: string, // TODO include links or explanations why storing serial inventory is important for emergency situations
+    // condition is often influenced by perception and dependent on specific guidelines, so rather than giving a 0-100 rating for a total
+    // this system will allow you to record issues, such as a particular feature not working, cracked outer casing, or missing accessory.
+    // logging these issues will allow the user to compare them to specific guidelines provided by insurance companies
+    // or whatever to figure out how it ought to be classified by their system, also provide specific ways to identify
+    // a specific item if normal identification marks are removed...
 }
 
 function* generateLocations() {
@@ -164,11 +169,14 @@ const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number =
         records: transform ? records.map(transform) : records
     }
 }
+type FakeReturn = { status: number, statusText?: string, data?: object | Location[] | Location | LocationReturn | Item[] | Item | void }
 
-const apiMap = new Map<MapKey, (groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => { status: number, statusText?: string, data?: object | Location[] | Location | LocationReturn | Item[] | Item | void}>()
+const apiMap = new Map<MapKey, null | ((groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => FakeReturn | Promise<FakeReturn> )>()
+apiMap.set({regex:/\/api\/category\/?$/, methods: ['GET']}, null)
+
 apiMap.set(
     {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']},
-    ({querystring} = {}, _) => {
+    async ({querystring} = {}, _) => {
         const params = new URLSearchParams(querystring)
         // assume page 1 if no page requested, pagesize defaults to 25
         let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
