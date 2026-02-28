@@ -14,7 +14,7 @@ export const Categories = [
     "furniture", // could have other subcategories, but this is enough for the pre-DB example
 ]
 
-export type Location = {
+export interface Location {
     name: string,
     description?: string,
     notes?: string,
@@ -26,7 +26,7 @@ export type Location = {
     // perhaps active inventory placed into 'organizational' locations will be treated the same as no location?
 }
 
-export type Item = {
+export interface Item {
     id: number,
     name: string,
     categories: Array<string>,
@@ -169,9 +169,16 @@ const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number =
         records: transform ? records.map(transform) : records
     }
 }
-type FakeReturn = { status: number, statusText?: string, data?: object | Location[] | Location | LocationReturn | Item[] | Item | void }
 
-const apiMap = new Map<MapKey, null | ((groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => FakeReturn | Promise<FakeReturn> )>()
+interface FakeReturn {
+    status: number,
+    statusText?: string,
+    data?: unknown
+}
+
+type fakeAPIFunc = (groups?: {[key: string]: string}, body?: BodyInit|null|undefined, urlstring ?: string) => FakeReturn | Promise<FakeReturn>
+
+const apiMap = new Map<MapKey, null | (fakeAPIFunc)>()
 apiMap.set({regex:/\/api\/category\/?$/, methods: ['GET']}, null)
 
 apiMap.set(

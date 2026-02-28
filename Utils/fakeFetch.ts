@@ -13,7 +13,7 @@ export default async function fetch(url: RequestInfo | URL, init: RequestInit): 
         }
 
         // adding a small actual async delay to this process to make sure the rest of the UI can handle what will happen in the event of an actual event loop yield
-        await new Promise((res, rej) => setTimeout(() => res(true), 400 + (Math.random() * 600)))
+        await new Promise((res) => setTimeout(() => res(true), 400 + (Math.random() * 600)))
 
         // treat faked endpoints specially, converting the data that may not be behind a promise
         const result = await fv(regexGroups?.groups, init.body, urlstring)
@@ -27,6 +27,7 @@ export default async function fetch(url: RequestInfo | URL, init: RequestInit): 
             }
         )
     } catch (e) {
+        console.error(e)
         return new Response(null, { status: 500, })
     }
 }

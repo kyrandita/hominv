@@ -12,6 +12,7 @@ export default function ApplicationLinks() {
         <Link href={"/dashboard"}>Dashboard</Link>
         <Link href={'/inventory'}>Inventory</Link>
         <Link href={'/location'}>Locations</Link>
+        <Link href={'/settings'}>Settings</Link>
         </>
         }
     </>
