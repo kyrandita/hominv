@@ -180,6 +180,7 @@ type fakeAPIFunc = (groups?: {[key: string]: string}, body?: BodyInit|null|undef
 
 const apiMap = new Map<MapKey, null | (fakeAPIFunc)>()
 apiMap.set({regex:/\/api\/category\/?$/, methods: ['GET']}, null)
+apiMap.set({regex:/\/api\/settings\/?$/, methods: ['GET']}, null)
 
 apiMap.set(
     {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']},

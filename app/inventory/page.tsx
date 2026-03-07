@@ -64,7 +64,6 @@ export default function Inventory() {
     }
 
     return <main className="inventory">
-        <p>Users home inventory, paginated likely when I get far enough to do that</p>
         <div className="table-wrapper">
             <table>
                 <thead>
