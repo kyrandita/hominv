@@ -45,20 +45,23 @@
     right: 0;
     padding: .5em .5em 0;
     max-height: 5em;
+    background-color: #ccc;
+    @media (prefers-color-scheme: dark) {
+      background-color: #333;
+    }
+
+     .mainLogo {
+      /* might try to make the svg colorable if I can remember how to do that more specifically, been a while */
+      @media (prefers-color-scheme: light) {
+        filter: invert(100%)
+      }
+    }
   }
   a:any-link {
     /* 2 points I agree with most css frameworks on, links should not change */
     color: inherit;
     text-decoration: inherit;
   }
-}
-
-body > *{
-  /* background-color: gray; */
-}
-
-body main {
-  /* background-color: black; */
 }
 
 button {

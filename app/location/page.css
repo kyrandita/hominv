@@ -19,6 +19,9 @@
             background-color: black;
             position: sticky;
             top: 0;
+            @media (prefers-color-scheme: light) {
+                background-color: tan;
+            }
         }
     }
     > div:not(.table-wrapper) {

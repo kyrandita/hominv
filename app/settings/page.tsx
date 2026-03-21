@@ -31,7 +31,7 @@ export default function Settings() {
         setNotification_Auditing_duration(e.currentTarget.value)
     }
 
-    return <div style={{columns: 3}}>
+    return <div style={{columns: '30em'}}>
         <p>Settings for features I have not yet created, instead it is currently a checklist of features I plan to Proof of Concept here as I work on this</p>
         <p>In reality, Homebox does nearly everything I want this to be able to do and has more backing than I could hope for... It doesn&apos;t make a ton of sense to recreate a worse wheel... but I will possibly POC concepts of things I WISH Homebox did to show off the idea. If it seems good enough maybe it would be worth contributing to Homebox to make that project better...</p>
 
