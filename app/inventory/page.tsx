@@ -1,9 +1,9 @@
 'use client'
 import AddInventoryForm from "@/Components/AddInventoryForm"
 import fetch from "@/Utils/fakeFetch"
-import { Dialog } from "@mui/material"
+import { Chip, Dialog, MenuItem, Select } from "@mui/material"
 import Link from "next/link"
-import { useState } from "react"
+import { ChangeEvent, SyntheticEvent, useState } from "react"
 import { Item } from "@/Utils/fakeData.js"
 import { usePagedFetch } from "@/Utils/usePagedFetch"
 
@@ -11,13 +11,14 @@ import './page.css'
 import { useFetch } from "@/Utils/useFetch"
 
 export default function Inventory() {
-    // this would likely be paginated and will be the next step in data faking as well, just doing this for v1
     const [pageUrl, setPageUrl] = useState(new URL('/api/inventory', globalThis.location?.origin ?? 'http://localhost'))
     // TODO switch to usePagedFetch since I went to the effort to make it
     // const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch<{records:Item[], offset: number, pagesize: number, total: number}>(pageUrl)
     const {data:user_inventory, loading, error, refresh:inventoryRefresh, pagefuncs:{changePage, firstPage, lastPage}} = usePagedFetch<Item>(pageUrl)
     const {data: catData, loading: catLoading, error: catError} = useFetch<Array<string>>('/api/category')
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
+
+    const [catFilterSelection, setCatFilterSelection] = useState<Set<string>>(new Set())
 
     function handleAddFormSubmit(fd:FormData) {
         // possibly show loading indicator
@@ -63,9 +64,70 @@ export default function Inventory() {
         setPageUrl(lastPage())
     }
 
+    const handleCategoryFilterAdd = (e: ChangeEvent<Omit<HTMLInputElement, "value"> & { value: ""; }, Element> | (Event & { target: { value: ""; name: string; }; }), child: ReactNode) => {
+        const categoryToAdd = e.target.value
+        const newCategoryList = new Set([...catFilterSelection, categoryToAdd])
+        // only bother making a change if the filter list actually changed, shouldn't be possible given the interface but it's a simple check
+        if (newCategoryList.symmetricDifference(catFilterSelection).size) {
+            setCatFilterSelection(newCategoryList)
+            // forceing first page when filter changes...
+            const nurl = firstPage()
+            nurl.searchParams.delete('filter')
+            newCategoryList.forEach(v => nurl.searchParams.append('filter', v))
+            setPageUrl(nurl)
+        }
+    }
+
+    const handleCategoryFilterDelete = (e: SyntheticEvent<HTMLElement, PointerEvent>) => {
+        const categoryToRemove = e.currentTarget.parentElement?.dataset.category
+        const newCategoryList = new Set([...catFilterSelection?.values().filter(a => a != categoryToRemove)])
+        if (newCategoryList.symmetricDifference(catFilterSelection).size) {
+            setCatFilterSelection(newCategoryList)
+            const nurl = firstPage()
+            nurl.searchParams.delete('filter')
+            newCategoryList.forEach(v => nurl.searchParams.append('filter', v))
+            setPageUrl(nurl)
+        }
+    }
+
     return <main className="inventory">
+        <div>
+            {catFilterSelection && [...catFilterSelection.values()].map((category: string, i) =>
+                <Chip key={i}
+                    data-category={category}
+                    label={category}
+                    onDelete={handleCategoryFilterDelete}
+                    deleteIcon={<strong>X</strong>}
+                />)
+            }
+            <Select
+                value = ''
+                displayEmpty={true}
+                renderValue={() => '+ filter'}
+                IconComponent={'a'}
+                onChange={handleCategoryFilterAdd}
+            >
+                {catData && catData.filter(a => !catFilterSelection?.has(a))
+                    .map((cat) => <MenuItem key={cat} data-category={cat} value={cat}>{cat}</MenuItem>)
+                }
+            </Select>
+            <br />
+            {/* 
+                since categories can be created by the user, an interface such as this will likely
+                take too much screen space, an interface such as chips in an area with the ability
+                to add through a dropdown or something might be better, abandon this UI path
+            */}
+
+            {/* add Chip for selected category filters, and use a Select to add new selections? */}
+
+            sort and filteriing options can go here, once collected I&apos;ll need to update the api to include this functionality.
+        </div>
         <div className="table-wrapper">
             <table>
+                <colgroup>
+                    <col />
+                    <col style={{width: '0px'}} />
+                </colgroup>
                 <thead>
                     <tr>
                         <th>Item Name</th>

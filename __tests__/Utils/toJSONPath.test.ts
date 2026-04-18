@@ -57,7 +57,7 @@ describe('toJSONPath', () => {
                 duration: 'P3M',
             },
             Reports: [
-                {
+                { // I highly doubt I would store this in a DB this way, but for testing toJSONPath...
                     reportName: 'addedItems',
                     period: 'Monthly', // not sure how this will be represented in actual settings, but in this test it doesn't matter yet
                     threshhold: '1', // maybe don't send the report if no items added in period? not trying to create new ideas with these tests... I just do...

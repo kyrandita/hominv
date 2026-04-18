@@ -134,7 +134,7 @@ function* generateItems(total = 100) {
     }
 }
 
-const invList: Item[] = [
+export const invList: Item[] = [
     {
         id: 0xABCDEF,
         name: 'TV',
@@ -183,25 +183,25 @@ apiMap.set({regex:/\/api\/category\/?$/, methods: ['GET']}, null)
 apiMap.set({regex:/\/api\/settings\/?$/, methods: ['GET']}, null)
 
 apiMap.set(
-    {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']},
-    async ({querystring} = {}, _) => {
-        const params = new URLSearchParams(querystring)
-        // assume page 1 if no page requested, pagesize defaults to 25
-        let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
-        pagesize = Number(pagesize)
-        offset = Number(offset)
-        if (pagesize <= 10) {
-            pagesize = 10
-        }
-        if (offset < 0) {
-            offset = 0
-        }
-        // add sort by column options
-        return { // records contain only minimal information about stored inventory
-            status: 200,
-            data: getPageData(invList, offset, pagesize),
-        }
-    }
+    {regex:/\/api\/inventory(?:\?(?<querystring>.*)|)$/, methods: ['GET']}, null
+    // async ({querystring} = {}, _) => {
+    //     const params = new URLSearchParams(querystring)
+    //     // assume page 1 if no page requested, pagesize defaults to 25
+    //     let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
+    //     pagesize = Number(pagesize)
+    //     offset = Number(offset)
+    //     if (pagesize <= 10) {
+    //         pagesize = 10
+    //     }
+    //     if (offset < 0) {
+    //         offset = 0
+    //     }
+    //     // add sort by column options
+    //     return { // records contain only minimal information about stored inventory
+    //         status: 200,
+    //         data: getPageData(invList, offset, pagesize),
+    //     }
+    // }
 )
 
 apiMap.set(

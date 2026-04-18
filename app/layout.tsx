@@ -7,6 +7,7 @@ import { ProviderComponent } from "@/Contexts/UserContext";
 import UserStateNavElement from "@/Components/UserStateNavElement";
 import Image from "next/image";
 import ApplicationLinks from "@/Components/ApplicationLinks";
+import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,12 +33,14 @@ export default function RootLayout({
     <html lang="en">
       <ProviderComponent>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased  min-h-screen`}>
-          <header style={{display:"flex", justifyContent: "space-between", alignItems: "center"}}>
-            <Link href="/"><Image className="mainLogo" src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
-            <ApplicationLinks></ApplicationLinks>
-            <UserStateNavElement></UserStateNavElement>
-          </header>
-          {children}
+          <AppRouterCacheProvider>
+            <header style={{display:"flex", justifyContent: "space-between", alignItems: "center"}}>
+              <Link href="/"><Image className="mainLogo" src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
+              <ApplicationLinks></ApplicationLinks>
+              <UserStateNavElement></UserStateNavElement>
+            </header>
+            {children}
+          </AppRouterCacheProvider>
         </body>
       </ProviderComponent>
     </html>

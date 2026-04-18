@@ -7,6 +7,11 @@
         flex-grow: 1;
         display: flex;
         flex-direction: column;
+        /* overflow-y: auto; */
+        /* I could make this scroll the same as locations, but I'm leaving it scrolling to play with different UI options until I decide what I want it to look like */
+        table {
+            table-layout: fixed;
+        }
     }
 
     > div:not(.table-wrapper) {
