@@ -41,7 +41,7 @@ type UserContextActions = LoginAction | LogoutAction
 
 function ProviderComponent ({ children }: PropsWithChildren) {
 
-    const reducerFunction = (prevState: UserState, action: UserContextActions) =>{
+    const reducerFunction = (prevState: UserState, action: UserContextActions) => {
         console.log({prevState, action});
         switch (action.type) {
             case 'login':
@@ -51,7 +51,6 @@ function ProviderComponent ({ children }: PropsWithChildren) {
             case 'logout':
                 // it may be prudent to `.clear()` instead, but for my purposes right now this is enough
                 window.sessionStorage.removeItem('loginToken')
-                redirect('/')
                 return new UserState()
             default:
                 return prevState;

@@ -64,7 +64,7 @@ export default function Inventory() {
         setPageUrl(lastPage())
     }
 
-    const handleCategoryFilterAdd = (e: ChangeEvent<Omit<HTMLInputElement, "value"> & { value: ""; }, Element> | (Event & { target: { value: ""; name: string; }; }), child: ReactNode) => {
+    const handleCategoryFilterAdd = (e: ChangeEvent<Omit<HTMLInputElement, "value"> & { value: ""; }, Element> | (Event & { target: { value: ""; name: string; }; })) => {
         const categoryToAdd = e.target.value
         const newCategoryList = new Set([...catFilterSelection, categoryToAdd])
         // only bother making a change if the filter list actually changed, shouldn't be possible given the interface but it's a simple check
@@ -89,6 +89,11 @@ export default function Inventory() {
             setPageUrl(nurl)
         }
     }
+
+    /*
+     * since the filtered categories are stored in the URL searchParams, I might be able to ditch the state
+     * storing them. I may have to test that possibility
+     */
 
     return <main className="inventory">
         <div>

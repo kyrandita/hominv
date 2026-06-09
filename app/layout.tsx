@@ -8,6 +8,7 @@ import UserStateNavElement from "@/Components/UserStateNavElement";
 import Image from "next/image";
 import ApplicationLinks from "@/Components/ApplicationLinks";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
+import Notafucation from "@/Components/Notafucation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
             </header>
             {children}
           </AppRouterCacheProvider>
+          <Notafucation></Notafucation>
         </body>
       </ProviderComponent>
     </html>
