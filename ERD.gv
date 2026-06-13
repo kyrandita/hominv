@@ -1,0 +1,181 @@
+digraph ERD {
+    // Global graph settings for clean layout
+    graph [
+        rankdir = "LR"       // Left-to-Right orientation prevents overly tall diagrams
+        splines = "polyline"    // Uses clean, rectangular, right-angle routing lines
+        nodesep = 0.6        // Space between tables
+        ranksep = 1.0        // Space between different layout levels
+    ];
+
+    // Default node style setup to look like data tables
+    node [
+        shape = "none"       // Necessary to let the HTML-like table define the border
+        fontname = "Helvetica"
+        fontsize = 10
+    ];
+
+    // Edge settings for Crow's Foot style notations
+    edge [
+        fontname = "Helvetica"
+        fontsize = 9
+        arrowhead = "crow"   // The "Many" side notation
+        arrowtail = "tee"    // The "One" side notation
+ //       dir = "both"         // Displays symbols on both sides of the line
+    ];
+
+    // ==========================================
+    // TABLES DEFINITIONS
+    // ==========================================
+
+    /**
+     * STEP 0
+     */
+    // Users Table
+    user [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#1f77b4" port="title"><font color="white"><b>users</b></font></td></tr>
+            <tr><td port="id" align="left">🔑 <b>id</b> : INT (PK)</td></tr>
+            <tr><td port="username" align="left">👤 username : VARCHAR</td></tr>
+            <tr><td port="email" align="left">📧 email : VARCHAR</td></tr>
+        </table>
+    >];
+
+    category [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="red" port="title"><font color="white"><b>category</b></font></td></tr>
+            <tr><td port="id" align="left"><b>id</b> : INT (PK)</td></tr>
+            <tr><td port="name" align="left">name : VARCHAR</td></tr>
+        </table>
+    >];
+
+    location [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#774444"><font color="white"><b>location</b></font></td></tr>
+            <tr><td port="id"><b>id</b></td></tr>
+            <tr><td port="path">path</td></tr>
+            <tr><td port="polygon">polygon</td></tr>
+            <tr><td port="color">color</td></tr>
+            <tr><td>Description : string</td></tr>
+            <tr><td port="created_date">created_date</td></tr>
+            <tr><td port="created_by">created_by</td></tr>
+        </table>
+    >];
+
+    {rank=source; user, location, category}
+
+
+    /**
+     * STEP 1
+     */
+
+    // Orders Table
+    // from the copied original example, left here for reference only as I don't deal with orders in this DB, will remove eventually
+    //order [label=<
+    //    <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+    //        <tr><td bgcolor="#2ca02c" port="title"><font color="white"><b>orders</b></font></td></tr>
+    //        <tr><td port="id" align="left">🔑 <b>id</b> : INT (PK)</td></tr>
+    //        <tr><td port="user_id" align="left">🔗 <i>user_id</i> : INT (FK)</td></tr>
+    //        <tr><td port="total_price" align="left">💰 total_price : DECIMAL</td></tr>
+    //    </table>
+    //>];
+
+    category_log [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#A00" port="title"><font color="white"><b>category_log</b></font></td></tr>
+            <tr><td port="id" align="left"><b>id</b> : INT (PK)</td></tr>
+            <tr><td port="category_id" align="left">category_id : VARCHAR</td></tr>
+            <tr><td port="action" align="left">action : VARCHAR</td></tr>
+            <tr><td port="actor" align="left">actor : VARCHAR</td></tr>
+        </table>
+    >];
+
+    user:id -> category_log:actor
+    category:id -> category_log:category_id
+
+    location_log [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#00A" port="title"><font color="white"><b>location_log</b></font></td></tr>
+            <tr><td port="id" align="left"><b>id</b> : INT (PK)</td></tr>
+            <tr><td port="location_id" align="left">location_id : VARCHAR</td></tr>
+            <tr><td port="action" align="left">action : VARCHAR</td></tr>
+            <tr><td port="actor" align="left">actor : VARCHAR</td></tr>
+        </table>
+    >];
+
+    user:id:e -> location_log:actor:w
+    location:id -> location_log:location_id
+
+    item [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#774444"><font color="white"><b>item</b></font></td></tr>
+            <tr><td port="id"><b>id</b></td></tr>
+            // this is the other option for linking items to locations, with location history being either in the log or another history log
+            // (if we want it to be FK). This is if we force distinct entries for each count of a multiple item import. Will discuss UI and process
+            // implications with a friend to make this decision once I've looked deeper into comparable products to see more of how the problem is solved there
+            <tr><td port="location_id">location_id</td></tr>
+            <tr><td port="polygon">polygon</td></tr>
+            <tr><td port="color">color</td></tr>
+            <tr><td port="created_date">created_date</td></tr>
+            <tr><td port="created_by">created_by</td></tr>
+        </table>
+    >];
+
+    location:id -> item:location_id
+
+    /**
+     * STEP 2
+     */
+
+    item_location [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#774444"><font color="white"><b>item_location</b></font></td></tr>
+            <tr><td port="id"><b>id</b></td></tr>
+            <tr><td port="item_id">item_id</td></tr>
+            <tr><td port="location_id">location_id</td></tr>
+            // I don't know if quantity actually makes sense here, each quantity even if purchased on the same day MUST be separate if serialized inventory,
+            // and probably should be to track condition separately, if not separated given each an ID tag to track loss would be more difficult.
+            // TODO research, how does Homebox handle Item quantity? does condition apply to the stack, do they split quantity to distinct items on import?
+            <tr><td port="quantity">quantity</td></tr>
+        </table>
+    >];
+
+    item:id -> item_location:item_id
+    location:id -> item_location:location_id
+
+    item_category [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#774444"><font color="white"><b>item_category</b></font></td></tr>
+            <tr><td port="id"><b>id</b></td></tr>
+            <tr><td port="item_id">item_id</td></tr>
+            <tr><td port="category_id">category_id</td></tr>
+        </table>
+    >];
+
+    item:id -> item_category:item_id
+    category:id -> item_category:category_id
+
+    item_log [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#00A" port="title"><font color="white"><b>item_log</b></font></td></tr>
+            <tr><td port="id" align="left"><b>id</b> : INT (PK)</td></tr>
+            <tr><td port="item_id" align="left">item_id : VARCHAR</td></tr>
+            <tr><td port="action" align="left">action : VARCHAR</td></tr>
+            <tr><td port="actor" align="left">actor : VARCHAR</td></tr>
+        </table>
+    >];
+
+    user:id -> item_log:actor
+    item:id -> item_log:item_id
+
+    /**
+     * STEP 3
+     */
+
+
+    // ==========================================
+    // RELATIONSHIPS (FOREIGN KEYS)
+    // ==========================================
+    
+    // Connects table users (id column) to table orders (user_id column)
+    //user:id:e -> order:user_id:w [headlabel="0..*", taillabel="1..1"];
+}
