@@ -45,6 +45,11 @@ export default function Locations() {
         <p>List of Locations, not sure how useful this is yet</p>
         <div className="table-wrapper">
             <table>
+                <colgroup>
+                    <col></col>
+                    <col></col>
+                    <col></col>
+                </colgroup>
                 <thead>
                     <tr>
                         <th>Location Name</th>

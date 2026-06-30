@@ -17,7 +17,7 @@ export default function Canvas({draw, ...rest}:{draw?: (ctx: CanvasRenderingCont
                 draw?.(context)
             }
         }
-    }, [draw])
+    }, [draw, canvasRef])
 
     return <canvas
         // I am intentionally scaling the canvas to keep the 'relative' dimensions of the location correct

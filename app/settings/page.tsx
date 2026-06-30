@@ -9,6 +9,9 @@ export default function Settings() {
     const [Notification_Auditing_enabled, setNotification_Auditing_enabled] = useState(false)
     const [Notification_Auditing_duration, setNotification_Auditing_duration] = useState("P3M") // not sure if I want this to stay a string, the API should reject if not formatted correctly but the UI can definitely reinforce that check
 
+    // alternatively, use(settingsDataPromise) should work because I'm using the promise form here...
+    // the promise doesn't change so it's result should stay the same on re-render, and in this case the 
+    // url is static so it shouldn't ever reload unless we call refresh manually...
     useEffect(() => {
         settingsDataPromise?.then(async (settingsData) => {
             setNotification_Auditing_enabled(settingsData.Notifications.Auditing.enabled)

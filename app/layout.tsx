@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import Link from "next/link";
 import { ProviderComponent } from "@/Contexts/UserContext";
 
@@ -9,6 +8,9 @@ import Image from "next/image";
 import ApplicationLinks from "@/Components/ApplicationLinks";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v13-appRouter";
 import Notafucation from "@/Components/Notafucation";
+import "./globals.css";
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./Theme";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,12 +37,14 @@ export default function RootLayout({
       <ProviderComponent>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased  min-h-screen`}>
           <AppRouterCacheProvider>
-            <header style={{display:"flex", justifyContent: "space-between", alignItems: "center"}}>
-              <Link href="/"><Image className="mainLogo" src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
-              <ApplicationLinks></ApplicationLinks>
-              <UserStateNavElement></UserStateNavElement>
-            </header>
-            {children}
+            <ThemeProvider theme={theme}>
+              <header style={{display:"flex", justifyContent: "space-between", alignItems: "center"}}>
+                <Link href="/"><Image className="mainLogo" loading="eager" src="/HomeInventory.svg" width="80" height={80} alt="Hi Logo"></Image></Link>
+                <ApplicationLinks></ApplicationLinks>
+                <UserStateNavElement></UserStateNavElement>
+              </header>
+              {children}
+            </ThemeProvider>
           </AppRouterCacheProvider>
           <Notafucation></Notafucation>
         </body>

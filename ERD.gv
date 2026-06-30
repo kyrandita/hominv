@@ -61,7 +61,15 @@ digraph ERD {
         </table>
     >];
 
-    {rank=source; user, location, category}
+    config [label=<
+        <table border="0" cellborder="1" cellspacing="0" cellpadding="6">
+            <tr><td bgcolor="#3A3"><font color="white"><b>config</b></font></td></tr>
+            <tr><td port="id"><b>id</b></td></tr>
+            <tr><td>not sure yet what this ought to look like,<br/>whether this should be column per setting<br/>or something else, I've done EAV but that<br/>always feels overkill and unnecessary</td></tr>
+        </table>
+    >]
+
+    {rank=source; user, location, category, config}
 
 
     /**

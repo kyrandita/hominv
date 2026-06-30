@@ -14,7 +14,7 @@ export default function Inventory() {
     const [pageUrl, setPageUrl] = useState(new URL('/api/inventory', globalThis.location?.origin ?? 'http://localhost'))
     // TODO switch to usePagedFetch since I went to the effort to make it
     // const {data:user_inventory, loading, error, refresh:inventoryRefresh } = useFetch<{records:Item[], offset: number, pagesize: number, total: number}>(pageUrl)
-    const {data:user_inventory, loading, error, refresh:inventoryRefresh, pagefuncs:{changePage, firstPage, lastPage}} = usePagedFetch<Item>(pageUrl)
+    const {data: user_inventory, loading, error, refresh: inventoryRefresh, pagefuncs: {changePage, firstPage, lastPage}} = usePagedFetch<Item>(pageUrl)
     const {data: catData, loading: catLoading, error: catError} = useFetch<Array<string>>('/api/category')
     const [addInventoryOpen, setAddInventoryOpen] = useState<boolean>(false)
 
@@ -37,40 +37,19 @@ export default function Inventory() {
         })
     }
 
-    // const changePage = (pageChange: number): void => {
-    //     // const nurl = new URL(pageUrl)
-    //     // maybe clear other params, but if working as designed no other params should exist
-    //     // nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
-    //     // nurl.searchParams.set('offset',String((user_inventory?.offset ?? 0) + ((user_inventory?.pagesize ?? 0) * pageChange)))
-    //     // if (user_inventory && Number(nurl.searchParams.get('offset')) >= (user_inventory?.total) || Number(nurl.searchParams.get('offset')) < 0) return
-    //     // setPageUrl(nurl)
-    // }
-
-    const handleFirstPage = () => {
-        // const nurl = new URL(pageUrl)
-        // nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
-        // nurl.searchParams.set('offset', String(0))
-        setPageUrl(firstPage())
-    }
+    const handleFirstPage = () => setPageUrl(firstPage())
     const handleNextPage = () => setPageUrl(changePage(1))
     const handlePrevPage = () => setPageUrl(changePage(-1))
-    const handleLastPage = () => {
-        // if (user_inventory) {
-        //     const nurl = new URL(pageUrl)
-        //     nurl.searchParams.set('pagesize', String(user_inventory?.pagesize))
-        //     nurl.searchParams.set('offset', String(Math.floor(user_inventory?.total/user_inventory?.pagesize)*user_inventory?.pagesize))
-        //     setPageUrl(nurl)
-        // }
-        setPageUrl(lastPage())
-    }
+    const handleLastPage = () => setPageUrl(lastPage())
 
     const handleCategoryFilterAdd = (e: ChangeEvent<Omit<HTMLInputElement, "value"> & { value: ""; }, Element> | (Event & { target: { value: ""; name: string; }; })) => {
         const categoryToAdd = e.target.value
         const newCategoryList = new Set([...catFilterSelection, categoryToAdd])
+        
         // only bother making a change if the filter list actually changed, shouldn't be possible given the interface but it's a simple check
         if (newCategoryList.symmetricDifference(catFilterSelection).size) {
             setCatFilterSelection(newCategoryList)
-            // forceing first page when filter changes...
+            // forcing first page when filter changes...
             const nurl = firstPage()
             nurl.searchParams.delete('filter')
             newCategoryList.forEach(v => nurl.searchParams.append('filter', v))
@@ -90,6 +69,12 @@ export default function Inventory() {
         }
     }
 
+    const handleActionMenu = () => {
+        const e = new Event('notaToast')
+        e.message = 'open a context menu for the inventory Item'
+        document.dispatchEvent(e)
+    }
+
     /*
      * since the filtered categories are stored in the URL searchParams, I might be able to ditch the state
      * storing them. I may have to test that possibility
@@ -98,11 +83,12 @@ export default function Inventory() {
     return <main className="inventory">
         <div>
             {catFilterSelection && [...catFilterSelection.values()].map((category: string, i) =>
+            // this might be a duplicate state where I could just use the URL 'filter' params
                 <Chip key={i}
                     data-category={category}
                     label={category}
                     onDelete={handleCategoryFilterDelete}
-                    deleteIcon={<strong>X</strong>}
+                    deleteIcon={<svg height='1.5em' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'><path d='M4.795 3.912l-.883.883.147.146L7.117 8 4.06 11.059l-.147.146.883.883.146-.147L8 8.883l3.059 3.058.146.147.883-.883-.147-.146L8.883 8l3.058-3.059.147-.146-.883-.883-.146.147L8 7.117 4.941 4.06z' style={{'isolation':'auto','mixBlendMode':'normal'}} fill='currentColor' fillRule='evenodd' /></svg>}
                 />)
             }
             <Select
@@ -113,6 +99,7 @@ export default function Inventory() {
                 onChange={handleCategoryFilterAdd}
             >
                 {catData && catData.filter(a => !catFilterSelection?.has(a))
+                    // TODO filter to only used ones maybe? from the current filter even. pagination probably means i'll need to include that as meta info from the api
                     .map((cat) => <MenuItem key={cat} data-category={cat} value={cat}>{cat}</MenuItem>)
                 }
             </Select>
@@ -151,7 +138,7 @@ export default function Inventory() {
                         <td>{categories.join(', ')}</td>
                         <td><Link href={`/location/${name}`}>{location}</Link></td>
                         <td>{description}</td>
-                        <td><button style={{fontSize: '1.5em', borderStyle: 'none', padding: '0 1em'}} onClick={() => alert('remove/sell/move item sub menu')}>≡</button></td>
+                        <td><button style={{fontSize: '1.5em', borderStyle: 'none', padding: '0 1em'}} onClick={handleActionMenu}>≡</button></td>
                     </tr>
                 )}
                 </tbody>
@@ -181,7 +168,6 @@ export default function Inventory() {
             <button>Export CSV for insurance claim</button>{/* including by default additional information like current valuation, purchase price, purchase date... all that stuff insurance companies want in case of a claim */}
             <button>export DB backup</button>{/* since this app is intended to be self-hosted, this function should actually be automatable to an offsite DB in case the very server it's hosted on is part of the loss claim */}
             <button>Print hard copy</button>{/* in case you want paper records */}
-            <div>some  {catData && catData.toString()} words</div>
             {/* all of these should be filterable to selected locations/items and selected fields, smart defaults if possible and maybe configurable reports, more things TODO in the DB */}
         </footer>
     </main>
