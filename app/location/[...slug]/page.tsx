@@ -1,13 +1,17 @@
 'use client'
 
 import Canvas from "@/Components/Canvas";
+import { Shape, ShapeCanvas } from "@/Components/ShapeCanvas";
+import { ShapeSVG } from "@/Components/ShapeSVG";
 import { LocationReturn } from "@/Utils/fakeData.js";
 import { tupleize } from "@/Utils/functions";
 import { useCanvas } from "@/Utils/useCanvas";
 import { useFetch } from "@/Utils/useFetch";
 import Image from "next/image"
 import Link from "next/link";
-import { MouseEventHandler, useCallback, useEffect, useState } from "react";
+import { MouseEventHandler, useCallback, useEffect, useMemo, useState } from "react";
+
+import './page.css'
 
 type SubLocShape = {
     stroke: CanvasFillStrokeStyles['strokeStyle'] ,
@@ -21,6 +25,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
     const [slug, setSlug] = useState<string>()
     const {data:locationData, error, loading } = useFetch<LocationReturn>(`/api/location/${slug}`)
     const [paths, setPaths] = useState<SubLocShape[]>([])
+    const [shapes, setShapes] = useState<Shape[] | null>(null)
 
     const [dragHandle, setDragHandle] = useState<Array<number> | null>(null)
 
@@ -63,7 +68,40 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
                 return [paths, points]
             }, [[], []])
             setPaths(locpaths)
+
+            const shapeData = locationData.sub.map<Shape>((location, index) => {
+                const points: {x:number,y:number}[] = []
+                if (location.quad && location.quad.length % 2 === 0) {
+                    for (let point = 0; point < location.quad.length; point += 2) {
+                        points.push({x: location.quad[point], y: location.quad[point + 1]})
+                    }
+                }
+                return {
+                    id: index.toString(), // perhaps a real DB id would be better, but as long as it's consistent within the run of the app
+                    ...(location.rgb ? {color: `#${location.rgb.toString(16).padStart(6,'0')}`} : {}),
+                    points,
+                }
+            })
+            setShapes(shapeData)
         })()}
+        
+    }, [locationData])
+
+    const shapeData : Shape[] | null = useMemo(() => {
+        console.log('got new location Data', locationData === undefined ? 'undefined' : 'OBJ')
+        return locationData?.sub.map<Shape>((location, index) => {
+            const points: {x:number,y:number}[] = []
+            if (location.quad && location.quad.length % 2 === 0) {
+                for (let point = 0; point < location.quad.length; point += 2) {
+                    points.push({x: location.quad[point], y: location.quad[point + 1]})
+                }
+            }
+            return {
+                id: index.toString(), // perhaps a real DB id would be better, but as long as it's consistent within the run of the app
+                ...(location.rgb ? {color: `#${location.rgb.toString(16).padStart(6,'0')}`} : {}),
+                points,
+            }
+        }) ?? null
     }, [locationData])
 
     const canvasDraw = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -97,7 +135,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
             // })
         })
     }, [paths])
-    const { ref: canvasRef, ctx: controlContext, element: controlElement } = useCanvas({draw: canvasDraw})
+    const { ref: canvasRef, ctx: controlContext, element: controlElement } = useCanvas({draw: canvasDraw, contextType: '2d'})
 
     const updatePaths = (pos:{x:number, y:number}) => {
         // not sure whether I want props or to just update based on current state... will use state for now
@@ -138,16 +176,6 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
         })
         setPaths(newPaths)
     }
-    // useEffect(() => {
-    //     if (canvasRef.current) {
-    //         const context = canvasRef.current.getContext('2d')
-    //         // console.log(context)
-    //         if (context) { //realistically this canvas should never have another context set to it... but typescript is strict
-    //             // canvasDraw(context)
-
-    //         }
-    //     }
-    // }, [paths, canvasRef, canvasDraw])
 
     const handleCanvasMouseMove: MouseEventHandler<HTMLCanvasElement> = (e: React.MouseEvent<HTMLCanvasElement>) => {
         // console.log(e)
@@ -257,19 +285,57 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
         }
         if (dragHandle) {
             // a last updatePaths? probably not needed
+            // TODO trigger save changed path to location
             setDragHandle(null)
             // console.log(paths)
+
         }
-
-
     }
+
+    const handleShapeUpdate = (updatedShape: Shape, updatedIndex: number) => {
+        setShapes(shapes?.map((shape, index) => {
+            return {
+                ...shape,
+                ...(updatedIndex === index ? updatedShape : {}),
+            }
+        }) ?? null)
+    }
+
     return <div style={{position: "relative", display: "flex", flexDirection: "column", }}>
+        {/* <div>
+            Design decisions for this component
+            <ol>
+                <li>Always visible handles<br />
+                    + can drag from any state<br />
+                    - handles can sit on top of eachother making it impossible to grab the right one
+                </li>
+                <li>
+                    Selection behavior<br />
+                    + Provides context for editing locations, adding points to existing shapes, adding points to locations that don&apos;t have one at all yet<br />
+                    - Slows down the flow, forces an additional click before dragging what&apos;s visible
+                </li>
+                <li>
+                    &quot;Mode&quot; or &quot;Visible modifier&quot;<br />
+                    I&apos;m sure there are better names for these options but I do not know them, I like UX but am not an expert<br />
+                    + Modes provide a less cluttered interface<br/>
+                    ) no unasked for drag handles<br />
+                    ) known indicator implying current behavior<br />
+
+                    + Visible Modifiers provide more functionality all up front with (hopefully) well designed icons<br />
+                    ) Probably best combined with at least Selection behavior to avoid cluttering every shape<br/>
+                    ) aside from side insertion ghost nodes, until I decide I need arc nodes or something there really aren&apos;t that any options to display
+                </li>
+            </ol>
+        </div> */}
         <div style={{maxWidth:'50vw', maxHeight: '50vw', position: 'relative'}}>
             {/* this canvas shows only direct sublocation polygons, maybe editable here */}
-            {!loading && <Canvas draw={canvasDraw} style={{backgroundColor:'lightslategray', width: '100%'}}></Canvas>}
+            {/*!loading && <Canvas draw={canvasDraw} style={{backgroundColor:'lightslategray', width: '100%'}}></Canvas>*/}
             {/* no real reason to use Canvas component for one and useCanvas for the other, just playing with each model and seeing what I can do with them */}
-            {!loading && <canvas ref={canvasRef} style={{position:'absolute', left: 0, width: '100%'}} width="1000" height={1000} onMouseMove={handleCanvasMouseMove} onMouseDown={handleCanvasMouseDown} onMouseUp={handleCanvasMouseUp}></canvas>}
+            {/*!loading && <canvas ref={canvasRef} style={{position:'absolute', left: 0, width: '100%'}} width="1000" height={1000} onMouseMove={handleCanvasMouseMove} onMouseDown={handleCanvasMouseDown} onMouseUp={handleCanvasMouseUp}></canvas>*/}
         </div>
+        {shapes && <ShapeCanvas style={{alignSelf: 'center', aspectRatio: 2/1, backgroundColor: '#222', maxWidth: '100%', maxHeight: '50rem'}} shapes={shapes} shapeChangeCB={handleShapeUpdate} width="2000" height="1000"></ShapeCanvas>}
+        {shapes && <ShapeSVG style={{alignSelf: 'center', aspectRatio: 2/1, backgroundColor: '#232', maxWidth: '100%', maxHeight: '50rem'}} shapes={shapes} onSave={handleShapeUpdate} width="2000" height="1000"></ShapeSVG>}
+
         <p>
             Showing sub locations seems reasonable, I&apos;ve started drawing handles on the canvas for each point.
             I intend to process these objects in such a way that they not only draw the shapes within the canvas,
@@ -283,7 +349,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
         <p>This should allow you to configure this location, move it, sell everything in it, add it to incident report, etc.</p>
 
         {!loading && <>
-        <Image src="http://placebeard.it/400/400" width={300} height={200} alt="Primary image of current item" style={{alignSelf: "center"}}/>
+        <Image src="http://placebeard.it/400/400" width={400} height={400} alt="Primary image of current item" style={{alignSelf: "center"}}/>
         {error && <div>This location does not seem to exist, or some other error: {error.stack} {error.message}</div>}
         <label>
             Location Path:&nbsp;

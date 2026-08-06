@@ -1,0 +1,21 @@
+svg > g {
+    &:hover use {
+        stroke-width: 2;
+        stroke: aqua;
+    }
+
+    &> line:hover {
+        stroke-width: 10;
+    }
+    &> g {
+        * {
+            pointer-events: none;
+        }
+        &> text {
+            text-anchor: middle;
+            /* apparently there is some bug in chrome that disables this entire block because I dare include an svg property in a css block that *gasp* descends into svg elements... BOO */
+            /* dominant-baseline: central; */
+            user-select: none;
+        }
+    }
+}
