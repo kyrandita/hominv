@@ -1,5 +1,7 @@
 import { useState, useRef, PointerEvent, useEffect, Fragment } from 'react';
 
+import './shapeSVG.css'
+
 type Point = {
   x: number
   y: number
@@ -15,7 +17,7 @@ export function ShapeSVG({
   shapes,
   onSave,
   selectedIndex,
-  onSelectIndex,
+  setSelectedIndex,
   width, // in this case, I only use these for viewbox, and for scaling reasons I need them to be number never percent or other length argument types... might be best to define my own prop in that case
   height,
   style,
@@ -23,7 +25,7 @@ export function ShapeSVG({
   shapes: Shape[],
   onSave: (s:Shape, i:number) => void,
   selectedIndex?: number | null,
-  onSelectIndex?: (index: number | null) => void
+  setSelectedIndex?: (index: number | null) => void
 } & React.ComponentPropsWithoutRef<'svg'>) {
   const svgElement = useRef<SVGSVGElement>(null)
   const [scale, setScale] = useState<number>(1)
@@ -42,7 +44,7 @@ export function ShapeSVG({
   // TODO fix this to null if outside bounds of shape indices
   const trueSelectedIndex = managedIndex ? selectedIndex : localSelection
   const selectIndex = (id: number | null) => {
-        onSelectIndex?.(id)
+        setSelectedIndex?.(id)
         if (!managedIndex) {
             setLocalSelection(id)
         }
@@ -57,6 +59,9 @@ export function ShapeSVG({
     startY: number
   }>({ dragging: false, vertexIndex: null, startX: 0, startY: 0 });
 
+  const [newShapeMode, setNewShapeMode] = useState<boolean>(false);
+  const [newShapePoints, setNewShapePoints] = useState<Point[]>([]);
+
   const windowPosToSVGPosition = (mouseX:number, mouseY:number): Point => {
     if (!svgElement.current) return {x:mouseX, y:mouseY} // if the element isn't available we shouldn't even be in an event bound to it's existence on the page...
     const ctm = svgElement.current.getScreenCTM()?.inverse()
@@ -68,7 +73,7 @@ export function ShapeSVG({
   }
 
   const insertVertex = (afterIndex: number, x:number, y:number) : void => {
-    if (!trueSelectedIndex) return
+    if (trueSelectedIndex === null) return
     console.log('Called insert')
     onSave({
       ...shapes[trueSelectedIndex],
@@ -88,9 +93,8 @@ export function ShapeSVG({
     e.preventDefault()
     e.stopPropagation()
 
-    if (e.button === 0) { // only start dragging if it's mainInteraction click
+    if (e.button === 0 && !newShapeMode) { // only start dragging if it's mainInteraction click
       const vertexIndex = e.currentTarget.dataset.vertexIndex ? Number(e.currentTarget.dataset.vertexIndex) : null
-      console.log(e.button)
       const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
       
       setDragInfo({
@@ -116,47 +120,85 @@ export function ShapeSVG({
   }
 
   const translatePoints = (shp: Shape, ind: number) : Point[] => {
-    return shp.points.map((point, pointIndex) => ({
-      x: point.x, y: point.y,
-      ... (
-        dragInfo.dragging
-        && trueSelectedIndex === ind
-        && (
-          dragInfo.vertexIndex === null
-          || dragInfo.vertexIndex === pointIndex
-        )
-        ? {
-          x: point.x + dragTranslation.x,
-          y: point.y + dragTranslation.y
-        } : {}
-      ),
-    }))
+    return shp.points.map((point, pointIndex) => {
+      return {
+        x: point.x, y: point.y,
+        ... (
+          dragInfo.dragging
+          && trueSelectedIndex === ind
+          && (
+            dragInfo.vertexIndex === null
+            || dragInfo.vertexIndex === pointIndex
+          )
+          ? {
+            // is this when i should snap to the absolute grid? it works if we're dragging a single point but if it's the whole shape I would need to handle it differently,
+            // like snap to the offset of whichever handle is closest to the grid after the translation? snapping to vertices of other shapes event more to handle...
+            // in any case this function will become more complex fast
+            x: point.x + dragTranslation.x,
+            y: point.y + dragTranslation.y
+          } : {}
+        ),
+      }
+    })
   }
 
   const handleMouseUp = (e: PointerEvent<SVGElement>) => {
     if (e.button === 0) {
-      if (trueSelectedIndex !== null && dragInfo.dragging) {
-        onSave({
-          ...shapes[trueSelectedIndex],
-          points: translatePoints(shapes[trueSelectedIndex], trueSelectedIndex)
-        },
-        trueSelectedIndex)
+      console.log({newShapeMode}, newShapePoints)
+      if (newShapeMode) { // right click to add point in new shape mode
+        const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
+        setNewShapePoints(prev => [...prev, {x: svgX, y: svgY}]);
+        console.log('set new point')
+      } else {
+        if (trueSelectedIndex !== null) {
+          if (dragInfo.dragging) {
+            onSave({
+              ...shapes[trueSelectedIndex],
+              points: translatePoints(shapes[trueSelectedIndex], trueSelectedIndex)
+            },
+            trueSelectedIndex)
+          } else if (e.target === e.currentTarget) { // if mouseup happens outside a shape, deselect
+            selectIndex(null)
+          }
+        }
+        setDragInfo({ dragging: false, vertexIndex: null, startX: 0, startY: 0 })
+        setDragTranslation({x:0, y:0, snap: false})
       }
-      setDragInfo({ dragging: false, vertexIndex: null, startX: 0, startY: 0 })
-      setDragTranslation({x:0, y:0, snap: false})
     } else if (e.button === 2) {
+      const closest = (e.target as SVGElement).closest('g[data-vertex-index]')
       // rather brashly I'm just deleting the node, there are much better options in the long run
       // if I delete down to 1 node no additional nodes can be added, 2 nodes at least can be expanded upon with the insert, but realistically a shape is pointless if it has less than 3 nodes, it can't be selected without external stuff I haven't set up yet
-      if (e.target instanceof SVGGElement && e.target.dataset.vertexIndex) {
-        removeVertex(Number(e.target.dataset.vertexIndex))
+      if (closest instanceof SVGGElement && e.currentTarget.contains(closest) && closest.dataset.vertexIndex) {
+        removeVertex(Number(closest.dataset.vertexIndex))
       }
     }
-  };
+  }
+
+  const handleNewShapeComplete = () => {
+    if (newShapeMode && trueSelectedIndex !== null && newShapePoints.length > 2) { // Minimum points for a valid shape
+      onSave({ ...shapes[trueSelectedIndex], points: newShapePoints }, trueSelectedIndex);
+      setNewShapeMode(false);
+      setNewShapePoints([]);
+    } else {
+      document.dispatchEvent(new CustomEvent('notaToast', { detail: {
+        message: 'not enough points to create a shape, need at least 3',
+      }}))
+    }
+  }
+
+  const toggleNewShapeMode = () => {
+    setNewShapeMode(prev => !prev);
+    if (!newShapeMode) { // Reset on entering mode
+      setNewShapePoints([]);
+    } else {
+      setNewShapePoints([windowPosToSVGPosition(0, 0)]); // Start with a single point at origin for simplicity
+    }
+  }
 
   return (
+    <div className='shapeSVG' style={style}>
       <svg
         ref={svgElement}
-        style={style}
         onPointerMove={handleMouseMove}
         onPointerUp={handleMouseUp}
         onPointerLeave={handleMouseUp}
@@ -183,32 +225,32 @@ export function ShapeSVG({
         </defs>
         {shapes.map((shape, shapeIndex) => {
           return trueSelectedIndex === shapeIndex ? null : (
-              <g
-                key={shape.id}
-                onClick={(e) => {e.preventDefault();e.stopPropagation();selectIndex(shapeIndex)}}
+            <g
+              key={shape.id}
+              onClick={(e) => {e.preventDefault();e.stopPropagation();selectIndex(shapeIndex)}}
+              >
+              <use
+                href={`#shape-${shapeIndex.toString().padStart(3,'0')}`}
+                fill={`${shape.color ?? '3b82f6'}4d`} //"rgba(59, 130, 246, 0.3)"
+              />
+              {shape.points.map((vertex, index) => (
+                <g
+                  key={index}
                 >
-                <use
-                  href={`#shape-${shapeIndex.toString().padStart(3,'0')}`}
-                  fill={`${shape.color ?? '3b82f6'}4d`} //"rgba(59, 130, 246, 0.3)"
-                />
-                {shape.points.map((vertex, index) => (
                   <circle
-                    key={index}
                     cx={vertex.x}
                     cy={vertex.y}
                     r={10/scale}
                     fill={`${shape.color}`}
-                    style={{
-                      filter: 'invert(100%)',
-                    }}
                     stroke="#2563eb"
                     strokeWidth="2"
                     clipPath={`url(#shape-${shapeIndex.toString().padStart(3,'0')}-clip)`}
                     // onClick={(e) => {e.preventDefault();e.stopPropagation();selectIndex(shapeIndex)}}
                   />
-                ))}
-              </g>
-            )
+                </g>
+              ))}
+            </g>
+          )
         })}
         {
           trueSelectedIndex !== null && 
@@ -221,27 +263,33 @@ export function ShapeSVG({
               // onClick={(e) => {e.preventDefault();e.stopPropagation()}}
               onPointerDown={(e) => handleShapeMouseDown(e)}
             />
-            
+
             {(() => {
               const v = []
               const TP = translatePoints(shapes[trueSelectedIndex], trueSelectedIndex)
               for (let index = 0; index < TP.length; index++) {
                 const vertex = TP[index]
                 const vertex2 = TP[(index+1)%TP.length]
-                v.push(<g key={index}><circle
-                  cx={vertex.x}
-                  cy={vertex.y}
-                  r={10/scale}
-                  fill={`${shapes[trueSelectedIndex].color}`}
-                  style={{
-                    filter: 'invert(100%)',
-                    cursor: 'move',
-                  }}
-                  stroke="#2563eb"
-                  strokeWidth="2"
-                  data-vertex-index={index}
-                  onPointerDown={(e) => handleShapeMouseDown(e)}
-                /><text x={vertex.x} y={vertex.y} dominantBaseline='central'>☺</text></g>)
+                v.push(
+                  <g 
+                    key={index}
+                    data-vertex-index={index}
+                    onPointerDown={(e) => handleShapeMouseDown(e)}>
+                      <circle
+                        cx={vertex.x}
+                        cy={vertex.y}
+                        r={10/scale}
+                        fill={`${shapes[trueSelectedIndex].color}`}
+                        style={{
+                          filter: 'invert(100%)',
+                        }}
+                        stroke="#2563eb"
+                        strokeWidth="2"
+                        data-vertex-index={index}
+                        />
+                      <text x={vertex.x} y={vertex.y}>☺</text>
+                  </g>
+                )
                 const dx = vertex.x - vertex2.x
                 const dy = vertex.y - vertex2.y
                 const L =  Math.hypot(dx, dy)
@@ -265,6 +313,37 @@ export function ShapeSVG({
             })()}
           </g>
         }
+        {newShapeMode && (
+          <g>
+            <polygon points={newShapePoints.map(p => `${p.x},${p.y}`).join(' ')}></polygon>
+            {newShapePoints.map((point, index) => (
+              <g
+                key={index}
+              >
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={10/scale}
+                  fill="red"
+                  style={{
+                    filter: 'invert(100%)',
+                  }}
+                  stroke="#2563eb"
+                  strokeWidth="2"
+                />
+              </g>
+            ))}
+          </g>
+        )}
       </svg>
+      {trueSelectedIndex !== null && <div>
+        <button onClick={handleNewShapeComplete} hidden={!newShapeMode} disabled={!newShapeMode}>
+          Complete Shape
+        </button>
+        <button onClick={toggleNewShapeMode} className={`${newShapeMode ? 'warn' : ''}`}>
+          {newShapeMode ? "Stop Drawing" : "Start Drawing"}
+        </button>
+      </div>}
+    </div>
   );
 }

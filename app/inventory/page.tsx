@@ -70,9 +70,9 @@ export default function Inventory() {
     }
 
     const handleActionMenu = () => {
-        const e = new Event('notaToast')
-        e.message = 'open a context menu for the inventory Item'
-        document.dispatchEvent(e)
+        document.dispatchEvent(new CustomEvent('notaToast', { detail: {
+            message: 'open a context menu for the inventory Item',
+        }}))
     }
 
     /*

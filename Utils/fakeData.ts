@@ -30,10 +30,12 @@ export interface Item {
     id: number,
     name: string,
     categories: Array<string>,
-    qty: number, // not sure if this makes sense, if I even allow a single item entry to be reused either all the uniquely identifying data would either be on the pivot table to location or all qty of an entry must share the same data
+    qty: number,
+    // not sure if this makes sense, if I even allow a single item entry to be reused either all the uniquely identifying data would either be on the pivot table to location or all qty of an entry must share the same data
     description?: string,
     location?: string,
-    serial?: string, // TODO include links or explanations why storing serial inventory is important for emergency situations
+    serial?: string,
+    // TODO include links or explanations why storing serial inventory is important for emergency situations
     // condition is often influenced by perception and dependent on specific guidelines, so rather than giving a 0-100 rating for a total
     // this system will allow you to record issues, such as a particular feature not working, cracked outer casing, or missing accessory.
     // logging these issues will allow the user to compare them to specific guidelines provided by insurance companies
@@ -50,7 +52,7 @@ function* generateLocations() {
     }
 }
 
-const locList: Location[] = [
+export const locList: Location[] = [
     {
         name: 'Home(555 nowhere ave)',
         description: 'Main location for this home, organizational, not intended to contain direct inventory',
@@ -159,7 +161,7 @@ type MapKey = {
     methods: string[],
 }
 
-const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): PagedAPI<T|U> => {
+export const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): PagedAPI<T|U> => {
     // logic for if offset goes past array size and such
     const records = data.slice(offset, offset + pagesize)
     return {
@@ -260,23 +262,23 @@ apiMap.set(
 
 apiMap.set(
     { regex: /\/api\/location\/list(?:\?(?<querystring>.*)|)/, methods: ['GET']},
-    ({querystring} = {}, _, url) => {
-        const params = new URLSearchParams(querystring)
-        let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
-        pagesize = Number(pagesize)
-        offset = Number(offset)
-        if (pagesize <= 10) {
-            pagesize = 10
-        }
-        if (offset < 0) {
-            offset = 0
-        }
-        return ({
-            status: 200,
-            // data: locList.map((loc) => ({name: loc.name, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}))
-            data: getPageData(locList, offset, pagesize),
-        })
-    }
+    // ({querystring} = {}, _, url) => {
+    //     const params = new URLSearchParams(querystring)
+    //     let { pagesize, offset } = { pagesize: 25, offset: 0 , ...Object.fromEntries(params.entries()) }
+    //     pagesize = Number(pagesize)
+    //     offset = Number(offset)
+    //     if (pagesize <= 10) {
+    //         pagesize = 10
+    //     }
+    //     if (offset < 0) {
+    //         offset = 0
+    //     }
+    //     return ({
+    //         status: 200,
+    //         // data: locList.map((loc) => ({name: loc.name, ...(loc.quad ? {quad: loc.quad} : {}), rgb: loc.rgb ?? 0xFFFFFF}))
+    //         data: getPageData(locList, offset, pagesize),
+    //     })
+    // }
 )
 
 apiMap.set(
@@ -321,54 +323,57 @@ apiMap.set(
         }
     }
 )
+export type LocationDetailed = Location & {
+    name_short?: string
+}
 
+// not sure if the parent also wants the details... I can always add it later
 export type LocationReturn = Location & {
-    last_modified: string | undefined,
-    sub: Location[]
-    sib: Location[]
+    sub: LocationDetailed[]
+    sib: LocationDetailed[]
 }
 
 apiMap.set(
-    { regex:/^\/api\/location\/(?<slug>.*)$/, methods: ['GET'] },
-    ({slug} = {}) => {
-        const entry = locList.find((loc) => loc.name === decodeURI(slug))
-        if (!entry) { return {status: 404} }
-        // then find all sub-locations to include minimal information about
-        const currentPath = entry.name.split('/')
+    { regex:/^\/api\/location\/(?<slug>.*)$/, methods: ['GET'] }, null
+    // ({slug} = {}) => {
+    //     const entry = locList.find((loc) => loc.name === decodeURI(slug))
+    //     if (!entry) { return {status: 404} }
+    //     // then find all sub-locations to include minimal information about
+    //     const currentPath = entry.name.split('/')
 
-        const [sub, sib] = locList
-        .reduce<[Location[], Location[]]>(([sub, sib], loc) => {
-            const locPath = loc.name.split('/')
-            if (
-                locPath.length < currentPath.length // too short to be sib
-                || locPath.length > currentPath.length + 1 // too long to be sub
-                || !currentPath.slice(0,-1).every((v,i) => locPath[i] == v) // does not belong to same parent
-                || (locPath.length == currentPath.length + 1 && locPath[currentPath.length-1] != currentPath.at(-1)) // sibling subs not allowed
-                || (locPath.length == currentPath.length && currentPath.every((v,i) => locPath[i] == v)) // eliminate self
-            ) {
-                return [sub, sib]
-            }
-            const cl = {
-                name: loc.name,
-                quad: loc.quad ?? [],
-                ...(loc.rgb ? {rgb: loc.rgb} : {}),
-            }
+    //     const [sub, sib] = locList
+    //     .reduce<[Location[], Location[]]>(([sub, sib], loc) => {
+    //         const locPath = loc.name.split('/')
+    //         if (
+    //             locPath.length < currentPath.length // too short to be sib
+    //             || locPath.length > currentPath.length + 1 // too long to be sub
+    //             || !currentPath.slice(0,-1).every((v,i) => locPath[i] == v) // does not belong to same parent
+    //             || (locPath.length == currentPath.length + 1 && locPath[currentPath.length-1] != currentPath.at(-1)) // sibling subs not allowed
+    //             || (locPath.length == currentPath.length && currentPath.every((v,i) => locPath[i] == v)) // eliminate self
+    //         ) {
+    //             return [sub, sib]
+    //         }
+    //         const cl = {
+    //             name: loc.name,
+    //             quad: loc.quad ?? [],
+    //             ...(loc.rgb ? {rgb: loc.rgb} : {}),
+    //         }
 
-            if (locPath.length > currentPath.length) {
-                return [[...sub, cl], sib]
-            }
-            return [sub, [...sib, cl]]
-        }, [[], []])
+    //         if (locPath.length > currentPath.length) {
+    //             return [[...sub, cl], sib]
+    //         }
+    //         return [sub, [...sib, cl]]
+    //     }, [[], []])
 
-        return {
-            status: entry ? 200 : 404,
-            data: {
-                ...entry,
-                sub,
-                sib,
-            }
-        }
-    }
+    //     return {
+    //         status: entry ? 200 : 404,
+    //         data: {
+    //             ...entry,
+    //             sub,
+    //             sib,
+    //         }
+    //     }
+    // }
 )
 
 // const date3monthsago = Temporal.Now.plainDateISO().subtract(Temporal.Duration.from('P3M')) // if the Temporal API gets approved before I replace these faker functions

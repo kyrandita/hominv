@@ -25,18 +25,18 @@ export type Shape = {
 export const ShapeCanvas = ({
     shapes,
     shapeChangeCB,
-    selectedId,
-    onSelect,
+    selectedIndex,
+    setSelectedIndex,
     width = 1000,
     height = 1000,
     style,
 }: {
     shapes: Shape[],
     shapeChangeCB: (shape: Shape, index: number) => void,
-    selectedId?: string | null,
-    onSelect?: (id: string | null) => void,
+    selectedIndex?: number | null,
+    setSelectedIndex?: (id: number | null) => void,
 } & React.ComponentPropsWithoutRef<"canvas">) => {
-    const [localSelection, setLocalSelection] = useState<string | null>(null)
+    const [localSelection, setLocalSelection] = useState<number | null>(null)
 
     const downPosition = useRef<Point | null>(null)
     const hasMoved = useRef<boolean>(false)
@@ -55,49 +55,59 @@ export const ShapeCanvas = ({
         }))
     },[shapes])
 
-    const managed = selectedId !== undefined
-    const trueSelectedId = managed ? selectedId : localSelection
-    const selectedShape = trueSelectedId && shapes.find((shape) => shape.id === trueSelectedId) || null
+    const managed = selectedIndex !== undefined
+    const trueSelectedIndex = managed ? selectedIndex : localSelection
+    const selectedShape = trueSelectedIndex !== null && shapes.find((shape, ind) => ind === trueSelectedIndex) || null
 
-    const selectId = (id: string | null) => {
-        if (onSelect) {
-            onSelect(id)
-        }
+    const selectId = (id: number | null) => {
+        setSelectedIndex?.(id)
         if (!managed) {
             setLocalSelection(id)
         }
     }
 
     const getTranslatedPoints = (shape: Shape, translation: Point, translationIndex: number | null): Point[] => {
-        console.log(shape, translation, translationIndex)
         return shape.points.map((point, pi) => ({
             x: point.x + (translationIndex === pi || translationIndex === null ? translation.x : 0),
             y: point.y + (translationIndex === pi || translationIndex === null ? translation.y : 0),
         }))
     }
-        
-    
 
     const draw = useCallback((ctx: CanvasRenderingContext2D) => {
         ctx.clearRect(0,0,Number(width),Number(height))
         ctx.save()
         // this draws paths in normal order except the selected ID path if exists
         shapes.forEach((shape, shapei) => {
-            if (shape.id === trueSelectedId) {
-                return // don't draw this yet, not changing it's order in the array, just hoisting it temporarily while it's selected
-                // issues will arise if more than one shape has the same id, only the last will be selectable in that case... or no ID at all
-                // that might be an argument for just using indices, not sure... I'll consider the problem
+            if (shapei === trueSelectedIndex) {
+                return
             }
+            ctx.save()
 
             ctx.lineWidth = 2
             ctx.strokeStyle = 'black'
             ctx.fillStyle = shape.color ?? 'black'
-            // possibly memoize this path creation, if we only create a new path2d whe it's different, but it must be done without storing each value during a drag event, easy way to create a memory leak
-            // this reduce calls lineTo first instead of moveTo, this is considered bad practice in documents I read. If this is the way I end up handling this I'll try to improve this
-            // ctx.fill(shape.points.reduce((path, point) => { path.lineTo(point.x, point.y); return path }, new Path2D()))
+            
             ctx.fill(shapePaths[shapei])
+
+            { // this block isn't needed, I just used it to separate out the handle processing, it can be removed if needed though I doubt the extra memory usage is enough to be a problem
+                ctx.save()
+                const circlePath = new Path2D();
+                // Draw circles around each vertex clipped to the overall shape path
+                for (let i = 0; i < shape.points.length; i++) {
+                    const point = shape.points[i];
+                    circlePath.moveTo(point.x, point.y)
+                    circlePath.arc(point.x, point.y, 10, 0, Math.PI * 2);
+                }
+                ctx.clip(circlePath);
+                ctx.fillStyle = 'red';
+                ctx.fill(shapePaths[shapei]);
+                ctx.restore()
+            }
+            ctx.restore()
         })
+        // this draw happens separately because we don't have precalculated shape2D for the selected shape if it's being dragged, there is obvious room for improvement here
         if (selectedShape) {
+            ctx.save()
             ctx.strokeStyle = 'white'
             ctx.fillStyle = selectedShape.color ?? 'blue'
             ctx.lineWidth = 2
@@ -115,14 +125,16 @@ export const ShapeCanvas = ({
                     handlePath.arc(drawPoints[i].x, drawPoints[i].y, 8, 0, 2*Math.PI)
                 }
                 selectedShapePath.closePath()
+                // no handlePath.closePath on purpose, it's not a closed polygon but a series of disconnected circles, in case someone else looks at this and wonders
                 ctx.fill(selectedShapePath)
                 ctx.stroke(selectedShapePath)
                 ctx.fillStyle = "yellow"
                 ctx.fill(handlePath)
             }
+            ctx.restore()
         }
         ctx.restore()
-    }, [width, height, selectedShape, trueSelectedId, shapePaths, translation, shapes])
+    }, [width, height, selectedShape, trueSelectedIndex, shapePaths, translation, shapes])
     const {ref, ctx, element} = useCanvas({contextType: '2d', draw})
     useEffect(() => {
         if (ctx) {
@@ -158,7 +170,7 @@ export const ShapeCanvas = ({
                 const handleIndex = selectedShape.points.findIndex(p => {
                     const hp = new Path2D()
                     hp.arc(p.x, p.y, 8, 0, 2*Math.PI)
-                    return ctx?.isPointInPath(hp, downPosition.current.x, downPosition.current.y)
+                    return ctx?.isPointInPath(hp, downPosition.current?.x ?? 0, downPosition.current?.y ?? 0)
                 })
                 if (handleIndex > -1) {
                     // found a handle to drag
@@ -182,20 +194,15 @@ export const ShapeCanvas = ({
 
     const pointerUp = (e: PointerEvent<HTMLCanvasElement>) => {
         if (!downPosition.current || !element) return
-        const rect = element.getBoundingClientRect()
+        // const rect = element.getBoundingClientRect()
         // not sure if I need this, the moves should be enough to get the final position, but testing will show if that assumption is correct
-        const canvasPos = { x: (e.clientX - rect.x)/rect.width*Number(width), y: (e.clientY - rect.y)/rect.height*Number(height) }
+        // const canvasPos = { x: (e.clientX - rect.x)/rect.width*Number(width), y: (e.clientY - rect.y)/rect.height*Number(height) }
 
         if (!hasMoved.current) {
             // if the mouse never entered a "drag" state, then we assume they are selecting a shape
             // I'm using downPos to avoid grabbing additional data if I can avoid it
-
-            const foundShape = shapes.findLast(shape => ctx?.isPointInPath(shape.points.reduce((path, point) => { path.lineTo(point.x, point.y); return path }, new Path2D()), downPosition.current.x, downPosition.current.y))
-            if (foundShape && foundShape.id) {
-                selectId(foundShape.id)
-            } else {
-                selectId(null)
-            }
+            const foundShapeIndex : number = shapes.findLastIndex(shape => ctx?.isPointInPath(shape.points.reduce((path, point) => { path.lineTo(point.x, point.y); return path }, new Path2D()), downPosition.current?.x ?? 0, downPosition.current?.y ?? 0))
+            selectId(foundShapeIndex > -1? foundShapeIndex : null)
         } else {
             // hasMoved.current is truthy
             // if there is a dragIndex and a translation I think that accurately means we have moved a shape.

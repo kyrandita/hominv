@@ -1,0 +1,41 @@
+.shapeSVG {
+    position: relative;
+    > div { /* should only be the action buttons, no other direct div child */
+        position: absolute;
+        bottom: .25em;
+        right: .25em;
+        > button {
+            background-color: green;
+            &.warn {
+                background-color: orange;
+            }
+        }
+    }
+    > svg {
+       max-width: 100%;
+       max-height: 100%;
+       background-color: var(--svg-bg-color, #232);
+       > g {
+           &:hover use {
+               stroke-width: 2;
+               stroke: aqua;
+           }
+   
+           > line:hover {
+               stroke-width: 10;
+           }
+           > g {
+                > circle {
+                    filter: invert(100%);
+                }
+               &> text {
+                   font-size: 3.5rem;
+                   text-anchor: middle;
+                   dominant-baseline: central;
+                   user-select: none;
+                   /* pointer-events: none; */
+               }
+           }
+       }
+   }
+}
