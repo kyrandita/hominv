@@ -3,34 +3,49 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
     const sheet = new CSSStyleSheet();
     sheet.replaceSync(`
         :host { 
-        display: inline-block; 
-        width: 48px; 
-        height: 48px; 
+            display: inline-block; 
+            width: 48px; 
+            height: 48px;
+            margin: .2em .2em;
+
+            .swatch { 
+                width: 100%;
+                height: 100%;
+                box-sizing: border-box;
+                border-radius: 50%; 
+                border: 2px solid #e2e8f0;
+                cursor: pointer;
+                display: block;
+            }
+
+            & > dialog {
+                position-area: left;
+                border: none;
+                border-radius: 8px;
+                padding: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            & > dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+
+            .gradient-pad {
+                width: 256px; height: 150px; position: relative; cursor: crosshair; border-radius: 4px;
+                background-image: linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
+            }
+            .gradient-pad::after {
+                content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                background-image: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,1) 100%);
+            }
         }
         /* Expose the host focus ring for accessible keyboard tabs */
         :host(:focus-within) .swatch {
-        outline: 3px solid #3b82f6;
-        outline-offset: 2px;
+            outline: 3px solid #3b82f6;
+            outline-offset: 2px;
         }
         /* Natively style the disabled layout cleanly */
         :host([disabled]) {
-        opacity: 0.5;
-        cursor: not-allowed;
-        pointer-events: none;
-        }
-        .swatch { 
-        width: 100%; height: 100%; border-radius: 50%; 
-        border: 2px solid #e2e8f0; cursor: pointer; display: block;
-        }
-        dialog { border: none; border-radius: 8px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
-        .gradient-pad {
-        width: 256px; height: 150px; position: relative; cursor: crosshair; border-radius: 4px;
-        background-image: linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
-        }
-        .gradient-pad::after {
-        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background-image: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,1) 100%);
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
         }
     `);
 
@@ -61,12 +76,15 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
             this.#shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
             this.#shadow.adoptedStyleSheets = [sheet];
 
-            this.#swatch = document.createElement('span');
+            this.#swatch = document.createElement('button');
             this.#swatch.className = 'swatch';
             this.#swatch.setAttribute('part', 'swatch');
+            this.#swatch.setAttribute('popoverTarget', 'DId')
             this.#swatch.setAttribute('tabindex', '0');
 
             this.#dialog = document.createElement('dialog');
+            this.#dialog.setAttribute('id', 'DId')
+            this.#dialog.setAttribute('popover', 'auto')
             this.#pad = document.createElement('div');
             this.#pad.className = 'gradient-pad';
             this.#pad.setAttribute('part', 'container');
@@ -81,7 +99,7 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
 
             this.#pad.addEventListener('click', this.#padClickHandler);
             this.#dialog.addEventListener('click', this.#dialogClickHandler);
-            this.#swatch.addEventListener('click', this.#swatchClickHandler);
+            // this.#swatch.addEventListener('click', this.#swatchClickHandler);
         }
 
         disconnectedCallback() {
@@ -113,7 +131,7 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
         #rootKeyDownHandler = (e) => {
             if ((e.key === ' ' || e.key === 'Enter') && !this.disabled) {
                 e.preventDefault();
-                this.#dialog.showModal();
+                this.#dialog.showPopover();
             }
         }
 
@@ -128,15 +146,17 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
 
             this.value = this.#hslToHex(this.#currentH, 100, this.#currentL);
             
-            this.#dialog.close();
-            this.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+            this.#dialog.hidePopover();
+            this.dispatchEvent(new Event('change', { bubbles: true }));
             this.#validate(); // Recalculate validation on selection change
         }
 
         #dialogClickHandler = (e) => { if (e.target === this.#dialog) this.#dialog.close(); }
 
-        #swatchClickHandler = () => {
-            if (!this.disabled) this.#dialog.showModal();
+        #swatchClickHandler = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (!this.disabled) this.#dialog.showPopover({source: this.#swatch});
         }
 
         // --- Core Validation Runner ---
@@ -255,6 +275,5 @@ if ('customElements' in globalThis && !customElements.get('nota-color-picker') &
             return [Math.round(h * 360), 100, Math.round(l * 100)];
         }
     }
-    console.log('registering nota-color-picker')
     customElements.define('nota-color-picker', ColorPicker);
 }

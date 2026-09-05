@@ -1,4 +1,6 @@
 import { invList } from "@/Utils/fakeData"
+import { PagedAPI } from "@/Utils/usePagedFetch"
+import { NextRequest, NextResponse } from "next/server"
 
 const getPageData = <T,U>(data: Array<T>, offset: number = 0, pagesize: number = 25, transform?: (arg0: T) => U): PagedAPI<T|U> => {
     // logic for if offset goes past array size and such
@@ -47,3 +49,10 @@ export async function GET( r: Request ) {
     })
 }
 
+export async function POST(r: NextRequest) {
+    const body = await r.json()
+    console.log(body)
+    return NextResponse.json({
+        status: 200,
+    })
+}

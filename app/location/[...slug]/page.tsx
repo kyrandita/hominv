@@ -329,6 +329,7 @@ export default function LocationPage({params} : {params: Promise<{ slug: string[
                         <nota-color-picker
                             value={`#${loc.rgb?.toString(16).padStart(6,'0') ?? 'FFF'}`}
                             onChange={(e) => {handleShapeUpdate({...shapes[loci], color: e.currentTarget.value}, loci)}}
+                            onClick={event => event.stopPropagation()}
                         ></nota-color-picker>
                         <input
                             type="color"

@@ -8,9 +8,14 @@ type Point = {
 }
 
 export type Shape = {
-    id?: string // id needed to associate when shape changes to callback, if not present should it even make the call?
-    color?: string
-    points: Point[]
+  id?: string // id needed to associate when shape changes to callback, if not present should it even make the call?
+  color?: string
+  points: Point[]
+}
+
+enum InteractionMode {
+  NORMAL,
+  CREATE,
 }
 
 export function ShapeSVG({
@@ -29,6 +34,7 @@ export function ShapeSVG({
 } & React.ComponentPropsWithoutRef<'svg'>) {
   const svgElement = useRef<SVGSVGElement>(null)
   const [scale, setScale] = useState<number>(1)
+  const [InteractionState, setInteractionState] = useState<InteractionMode>(InteractionMode.NORMAL)
 
   useEffect(() => {
     if (!svgElement.current) return;
@@ -44,23 +50,50 @@ export function ShapeSVG({
   // TODO fix this to null if outside bounds of shape indices
   const trueSelectedIndex = managedIndex ? selectedIndex : localSelection
   const selectIndex = (id: number | null) => {
-        setSelectedIndex?.(id)
-        if (!managedIndex) {
-            setLocalSelection(id)
-        }
+    setSelectedIndex?.(id)
+    if (!managedIndex) {
+      setLocalSelection(id)
     }
+  }
 
-  const [dragTranslation, setDragTranslation] = useState<{snap: boolean} & Point>({x: 0, y: 0, snap: false})
+  const [pivot, setPivot] = useState<Point | null>(null)
+  const actualPivot = trueSelectedIndex !== null ? (pivot ?? ((shapes[trueSelectedIndex].points.length > 2 && shapes[trueSelectedIndex].points.reduce<Point>((carry, current) => {
+    return {
+      x: ((carry.x * shapes[trueSelectedIndex].points.length) + current.x) / shapes[trueSelectedIndex].points.length,
+      y: ((carry.y * shapes[trueSelectedIndex].points.length) + current.y) / shapes[trueSelectedIndex].points.length,
+    }
+  }, { x:0, y:0 })) || null)) : null
+
+  const [dragTranslation, setDragTranslation] = useState<({snap: boolean} & Point) | null>({x: 0, y: 0, snap: false})
   
-  const [dragInfo, setDragInfo] = useState<{
-    dragging: boolean
-    vertexIndex: number | null // which handle is being dragged, if null, the whole polygon
-    startX: number
-    startY: number
-  }>({ dragging: false, vertexIndex: null, startX: 0, startY: 0 });
+  type dragState = {
+    type: 'vertex'
+    start: Point
+    vertexIndex: number
+  } | {
+    type: 'rotate'
+    start: Point
+    startAngle: number
+  } | {
+    type: 'shape' | 'scale' | 'pivot'
+    start: Point
+  }
 
-  const [newShapeMode, setNewShapeMode] = useState<boolean>(false);
+  const [dragInfo, setDragInfo] = useState<dragState | null>(null);
+
   const [newShapePoints, setNewShapePoints] = useState<Point[]>([]);
+
+  const selectedIndexHistory = useRef(selectedIndex)
+
+  useEffect(() => {
+    if (selectedIndexHistory.current !== selectedIndex) {
+      setInteractionState(InteractionMode.NORMAL)
+      setDragInfo(null)
+      setDragTranslation(null)
+      setPivot(null)
+      selectedIndexHistory.current = selectedIndex
+    }
+  }, [selectedIndex])
 
   const windowPosToSVGPosition = (mouseX:number, mouseY:number): Point => {
     if (!svgElement.current) return {x:mouseX, y:mouseY} // if the element isn't available we shouldn't even be in an event bound to it's existence on the page...
@@ -74,7 +107,6 @@ export function ShapeSVG({
 
   const insertVertex = (afterIndex: number, x:number, y:number) : void => {
     if (trueSelectedIndex === null) return
-    console.log('Called insert')
     onSave({
       ...shapes[trueSelectedIndex],
       points: shapes[trueSelectedIndex].points.toSpliced(afterIndex, 0, {x,y})
@@ -82,76 +114,144 @@ export function ShapeSVG({
   }
 
   const removeVertex = (index: number) => {
-    if (!trueSelectedIndex) return
+    if (trueSelectedIndex === null) return
     onSave({
       ...shapes[trueSelectedIndex],
       points: shapes[trueSelectedIndex].points.toSpliced(index, 1)
     }, trueSelectedIndex)
   }
 
-  const handleShapeMouseDown = (e: PointerEvent<SVGElement>) => {
+  /* svg heirarchy as planned
+   * <svg>
+   *   <defs></defs> <-- a polygon and clippath are setup here for each shape to be <use>(d) further so we only actually iterate the points once for an object per render unless it is being edited or drawn, in fact this might be a good candidate for a useMemo that only reruns when the shape data gets updated
+   *   <g> <-- a <g> will exist at this level for each shape including the actively selected shape, it will have a data-shape-index property with the index of that shape within the shapes data
+   *     <use> <-- the actual shape, technically it creates a shadow dom copy of the one in <defs> but this is how all draw properties are set for the actually drawn instance of that shape
+   *     <g> <-- at this level all <g> elements are individual vertices, for shapes that aren't selected these are just drawn clipped to the shape, for selected shapes they are fully drawn and the <g> will contain a data-vertex-index
+   *       <circle> <-- drawn visual representing the vertex, purely visual
+   *       <text> <-- possibly used to draw a symbol for interaction on each vertex, might not stay, but also purely visual
+   *     </g>
+   *     // ONLY SELECTED
+   *     <line> <-- between each vertex and it's neighbor a perpendicular line is drawn, an indicator of where a new vertex might be inserted. not shown if distance between vertices is too short
+   *     <undetermined> <-- the drag part of the centroid pivot/rotate/scale tool
+   *     <circle> <-- the rotate part of the centroid pivot/rotate/scale tool
+   *     <rect> <-- scale part of the centroid pivot/rotate/scale tool
+   *   </g>
+   * </svg>
+   */
+  const handlePointerDown = (e: PointerEvent<SVGElement>) => {
     e.preventDefault()
     e.stopPropagation()
+    switch (e.button) {
+      case 0: { // main action click
+        if (InteractionState == InteractionMode.NORMAL && trueSelectedIndex !== null) { // only check handles for drag events if in normal mode and there is a selection
 
-    if (e.button === 0 && !newShapeMode) { // only start dragging if it's mainInteraction click
-      const vertexIndex = e.currentTarget.dataset.vertexIndex ? Number(e.currentTarget.dataset.vertexIndex) : null
-      const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
-      
-      setDragInfo({
-        dragging: true,
-        vertexIndex,
-        startX: svgX,
-        startY: svgY
-      })
+          // determine target and therefore action
+          const shapeTarget: SVGGElement | null = (e.target as SVGElement).closest('g[data-shape-index]')
+          if (Number(shapeTarget?.dataset.shapeIndex) !== trueSelectedIndex) return // not dragging selection, event doesn't matter to this
+          
+          const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
+
+          const vertexTarget: SVGGElement | null = (e.target as SVGElement).closest('g[data-vertex-index')
+          if (vertexTarget?.dataset.vertexIndex) {
+            setDragInfo({
+              type: 'vertex',
+              vertexIndex: Number(vertexTarget.dataset.vertexIndex), // this is no longer enough, we can also drag for scale, rotation, and pivot tool repositioning, not just vertex and shape translation
+              start: {x:svgX,y: svgY},
+            })
+            return
+          }
+          // I know the click happened within the selected shape and it's not a vertex
+          
+          // the actualPivot I think is redundant, this event shouldn't be possible if the pivot doesn't exist... but making typescript happy guards against weird code paths
+          if (e.target instanceof SVGCircleElement && actualPivot) {
+            const angle = Math.atan2(svgY - actualPivot.y, svgX - actualPivot.x)
+            setDragInfo({
+              type: 'rotate',
+              start: {x:svgX, y:svgY},
+              startAngle: angle
+            })
+            return
+          }
+          if (e.target instanceof SVGRectElement) {
+            setDragInfo({
+              type: 'scale',
+              start: {x:svgX, y:svgY},
+            })
+            return
+          }
+          if (false) { // check for pivot drag handle, not sure what that is yet
+            console.log('pivot')
+            return
+          }
+
+          setDragInfo({
+            type: 'shape',
+            start: {x:svgX, y:svgY}
+          })
+          
+        } else if (InteractionState === InteractionMode.CREATE) {
+          // ignore target, will always add a new node to ongoing list until cancelled or finalized
+          // happens on PointerUp
+        }
+      } break
+      case 2: { // secondary action click
+
+      } break
     }
   }
 
   const handleMouseMove = (e: PointerEvent<SVGSVGElement>) => {
-    const { dragging, startX, startY } = dragInfo;
-    if (!dragging || trueSelectedIndex === null) return;
-
-    const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
-
-    setDragTranslation({
-      x: svgX - startX,
-      y: svgY - startY,
-      snap: e.getModifierState('Shift'),
-    })
+    e.preventDefault()
+    e.stopPropagation()
+    if (dragInfo) { // no need to update state if no drag event is happening
+      const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
+      
+      setDragTranslation({
+        x: svgX,
+        y: svgY,
+        snap: e.getModifierState('Shift'),
+      })
+    }
   }
 
   const translatePoints = (shp: Shape, ind: number) : Point[] => {
-    return shp.points.map((point, pointIndex) => {
-      return {
-        x: point.x, y: point.y,
-        ... (
-          dragInfo.dragging
-          && trueSelectedIndex === ind
-          && (
-            dragInfo.vertexIndex === null
-            || dragInfo.vertexIndex === pointIndex
-          )
-          ? {
-            // is this when i should snap to the absolute grid? it works if we're dragging a single point but if it's the whole shape I would need to handle it differently,
-            // like snap to the offset of whichever handle is closest to the grid after the translation? snapping to vertices of other shapes event more to handle...
-            // in any case this function will become more complex fast
-            x: point.x + dragTranslation.x,
-            y: point.y + dragTranslation.y
-          } : {}
-        ),
+    // if not dragging or dragging the one thing that doesn't affect the points directly, skip translation
+    if (!dragInfo || dragInfo.type == 'pivot' || trueSelectedIndex !== ind) return shp.points
+
+    const mtrx = new DOMMatrix()
+    if (['shape', 'vertex'].includes(dragInfo.type) && dragTranslation) {
+      mtrx.translateSelf(dragTranslation.x - dragInfo.start.x, dragTranslation.y - dragInfo.start.y)
+    } else if (dragInfo.type === 'rotate' && dragTranslation && actualPivot) {
+      const currentAngle = Math.atan2(dragTranslation.y - actualPivot.y, dragTranslation.x - actualPivot.x)
+      mtrx.translateSelf(actualPivot.x, actualPivot.y)
+        .rotateSelf((currentAngle - dragInfo.startAngle) * (180/Math.PI))
+        .translateSelf(-actualPivot.x, -actualPivot.y)
+    } else if (dragInfo.type === 'scale' && dragTranslation && actualPivot) {
+      const scale = {
+        x: (dragTranslation.x - actualPivot.x) / (dragInfo.start.x - actualPivot.x),
+        y: (dragTranslation.y - actualPivot.y) / (dragInfo.start.y - actualPivot.y),
       }
+      mtrx.translateSelf(actualPivot.x, actualPivot.y)
+        .scaleSelf(dragTranslation.snap ? Math.max(scale.x, scale.y) : scale.x, dragTranslation.snap ? Math.max(scale.x, scale.y) : scale.y)
+        .translateSelf(-actualPivot.x, -actualPivot.y)
+    }
+    return shp.points.map((point, pointIndex) => {
+      let p = new DOMPoint(point.x, point.y)
+      if (dragInfo.type !== 'vertex' || pointIndex === dragInfo.vertexIndex)
+        p = p.matrixTransform(mtrx)
+      return { x: p.x, y: p.y }
     })
   }
 
   const handleMouseUp = (e: PointerEvent<SVGElement>) => {
-    if (e.button === 0) {
-      console.log({newShapeMode}, newShapePoints)
-      if (newShapeMode) { // right click to add point in new shape mode
-        const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
-        setNewShapePoints(prev => [...prev, {x: svgX, y: svgY}]);
-        console.log('set new point')
-      } else {
-        if (trueSelectedIndex !== null) {
-          if (dragInfo.dragging) {
+    switch(e.button) {
+      case 0: {
+        if (InteractionState === InteractionMode.CREATE) {
+          console.log('herer')
+          const { x:svgX, y: svgY } = windowPosToSVGPosition(e.clientX, e.clientY)
+          setNewShapePoints(prev => [...prev, {x: svgX, y: svgY}]);
+        } else if (InteractionState === InteractionMode.NORMAL) {
+          if (trueSelectedIndex !== null && dragInfo) {
             onSave({
               ...shapes[trueSelectedIndex],
               points: translatePoints(shapes[trueSelectedIndex], trueSelectedIndex)
@@ -160,45 +260,50 @@ export function ShapeSVG({
           } else if (e.target === e.currentTarget) { // if mouseup happens outside a shape, deselect
             selectIndex(null)
           }
+          setDragInfo(null)
+          setDragTranslation(null)
         }
-        setDragInfo({ dragging: false, vertexIndex: null, startX: 0, startY: 0 })
-        setDragTranslation({x:0, y:0, snap: false})
-      }
-    } else if (e.button === 2) {
-      const closest = (e.target as SVGElement).closest('g[data-vertex-index]')
-      // rather brashly I'm just deleting the node, there are much better options in the long run
-      // if I delete down to 1 node no additional nodes can be added, 2 nodes at least can be expanded upon with the insert, but realistically a shape is pointless if it has less than 3 nodes, it can't be selected without external stuff I haven't set up yet
-      if (closest instanceof SVGGElement && e.currentTarget.contains(closest) && closest.dataset.vertexIndex) {
-        removeVertex(Number(closest.dataset.vertexIndex))
-      }
+      } break
+      case 2: {
+        const closest = (e.target as SVGElement).closest('g[data-vertex-index]')
+        // rather brashly I'm just deleting the node, there are much better options in the long run
+        // if I delete down to 1 node no additional nodes can be added, 2 nodes at least can be expanded upon with the insert, but realistically a shape is pointless if it has less than 3 nodes, it can't be selected without external stuff I haven't set up yet
+        if (closest instanceof SVGGElement && e.currentTarget.contains(closest) && closest.dataset.vertexIndex) {
+          removeVertex(Number(closest.dataset.vertexIndex))
+        }
+      } break
     }
   }
 
   const handleNewShapeComplete = () => {
-    if (newShapeMode && trueSelectedIndex !== null && newShapePoints.length > 2) { // Minimum points for a valid shape
+    if (InteractionState === InteractionMode.CREATE && trueSelectedIndex !== null && newShapePoints.length > 2) { // Minimum points for a valid shape
       onSave({ ...shapes[trueSelectedIndex], points: newShapePoints }, trueSelectedIndex);
-      setNewShapeMode(false);
+      setInteractionState(InteractionMode.NORMAL)
       setNewShapePoints([]);
     } else {
-      document.dispatchEvent(new CustomEvent('notaToast', { detail: {
+      // fine during testing and development, but if I truly make this it's own component this should be a specific event dispatched on "this" in the DOM sense, not a nota:toast event for sure, custom listeners can translate from one to the other if you are using a library like mine
+      document.dispatchEvent(new CustomEvent('nota:toast', { detail: {
+        class: 'warn',
         message: 'not enough points to create a shape, need at least 3',
       }}))
     }
   }
 
   const toggleNewShapeMode = () => {
-    setNewShapeMode(prev => !prev);
-    if (!newShapeMode) { // Reset on entering mode
-      setNewShapePoints([]);
-    } else {
-      setNewShapePoints([windowPosToSVGPosition(0, 0)]); // Start with a single point at origin for simplicity
-    }
+    setInteractionState(prev => {
+      if (prev === InteractionMode.NORMAL) {
+        setNewShapePoints([])
+        return InteractionMode.CREATE
+      }
+      return InteractionMode.NORMAL
+    })
   }
 
   return (
     <div className='shapeSVG' style={style}>
       <svg
         ref={svgElement}
+        onPointerDown={handlePointerDown}
         onPointerMove={handleMouseMove}
         onPointerUp={handleMouseUp}
         onPointerLeave={handleMouseUp}
@@ -227,11 +332,13 @@ export function ShapeSVG({
           return trueSelectedIndex === shapeIndex ? null : (
             <g
               key={shape.id}
+              data-shape-index={shapeIndex}
+              // TODO redo this to a single bound listener rather than a generated one, it might be best to merge with pointerDown
               onClick={(e) => {e.preventDefault();e.stopPropagation();selectIndex(shapeIndex)}}
               >
               <use
                 href={`#shape-${shapeIndex.toString().padStart(3,'0')}`}
-                fill={`${shape.color ?? '3b82f6'}4d`} //"rgba(59, 130, 246, 0.3)"
+                fill={`${shape.color ?? '3b82f6'}`} //"rgba(59, 130, 246, 0.3)"
               />
               {shape.points.map((vertex, index) => (
                 <g
@@ -254,14 +361,17 @@ export function ShapeSVG({
         })}
         {
           trueSelectedIndex !== null && 
-          <g>
+          <g
+            data-shape-index={trueSelectedIndex}
+          // onPointerDown={handleShapeMouseDown}
+          >
             <use
               href={`#shape-${trueSelectedIndex.toString().padStart(3,'0')}`}
-              fill={`${shapes[trueSelectedIndex].color ?? '3b82f6'}4d`} //"rgba(59, 130, 246, 0.3)"
+              fill={`${shapes[trueSelectedIndex].color ?? '3b82f6'}`} //"rgba(59, 130, 246, 0.3)"
               stroke="#3b82f6"
               strokeWidth="2"
               // onClick={(e) => {e.preventDefault();e.stopPropagation()}}
-              onPointerDown={(e) => handleShapeMouseDown(e)}
+              // onPointerDown={handleShapeMouseDown}
             />
 
             {(() => {
@@ -274,7 +384,8 @@ export function ShapeSVG({
                   <g 
                     key={index}
                     data-vertex-index={index}
-                    onPointerDown={(e) => handleShapeMouseDown(e)}>
+                    // onPointerDown={handleShapeMouseDown}
+                    >
                       <circle
                         cx={vertex.x}
                         cy={vertex.y}
@@ -311,9 +422,32 @@ export function ShapeSVG({
               }
               return v
             })()}
+            {actualPivot && <>
+              <circle
+                cx={actualPivot.x}
+                cy={actualPivot.y}
+                r={20}
+                fill='none'
+                stroke='white'
+                strokeWidth={5}
+                strokeDasharray={Math.PI * 10}
+                strokeDashoffset={Math.PI * 10}
+              ></circle>
+              <rect
+                x={actualPivot.x - 20}
+                y={actualPivot.y - 20}
+                width={40}
+                height={40}
+                stroke='white'
+                strokeWidth={5}
+                strokeDasharray={40}
+                strokeDashoffset={20}
+                fill='none'
+              ></rect>
+            </>}
           </g>
         }
-        {newShapeMode && (
+        {InteractionState === InteractionMode.CREATE && (
           <g>
             <polygon points={newShapePoints.map(p => `${p.x},${p.y}`).join(' ')}></polygon>
             {newShapePoints.map((point, index) => (
@@ -337,11 +471,11 @@ export function ShapeSVG({
         )}
       </svg>
       {trueSelectedIndex !== null && <div>
-        <button onClick={handleNewShapeComplete} hidden={!newShapeMode} disabled={!newShapeMode}>
+        <button onClick={handleNewShapeComplete} hidden={InteractionState === InteractionMode.NORMAL} disabled={InteractionState === InteractionMode.NORMAL}>
           Complete Shape
         </button>
-        <button onClick={toggleNewShapeMode} className={`${newShapeMode ? 'warn' : ''}`}>
-          {newShapeMode ? "Stop Drawing" : "Start Drawing"}
+        <button onClick={toggleNewShapeMode} className={`${InteractionState === InteractionMode.CREATE ? 'warn' : ''}`}>
+          {InteractionState === InteractionMode.CREATE ? "Stop Drawing" : "Start Drawing"}
         </button>
       </div>}
     </div>
